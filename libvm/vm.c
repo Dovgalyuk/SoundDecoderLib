@@ -1,22 +1,77 @@
 #include <assert.h>
+#include <stdio.h>
 #include "vm.h"
 #include "slot.h"
 
-#define VM_SLOTS        64
-#define VM_MEM_SIZE     0x100
+#define INSTRUCTIONS_PER_TICK 1
 
 static Slot slots[VM_SLOTS];
-static uint8_t memory[VM_MEM_SIZE];
+static uint8_t memory[VAR_GLOBAL_SIZE];
 
-void vm_memory_write(uint16_t addr, uint8_t val)
+void vm_set_var(uint16_t addr, uint8_t val)
 {
-    assert(addr < VM_MEM_SIZE);
+    addr -= VAR_GLOBAL_START;
+    assert(addr < VAR_GLOBAL_SIZE);
     memory[addr] = val;
 }
 
-uint8_t vm_memory_read(uint16_t addr)
+uint8_t vm_get_var(uint16_t addr)
 {
-    assert(addr < VM_MEM_SIZE);
+    addr -= VAR_GLOBAL_START;
+    assert(addr < VAR_GLOBAL_SIZE);
     return memory[addr];
 }
 
+void vm_load_slot(uint8_t id, const Schedule *sch)
+{
+    assert(id < VM_SLOTS);
+    slot_init(&slots[id], sch);
+}
+
+void vm_set_slot_var(uint8_t id, uint16_t addr, uint8_t val)
+{
+    assert(id < VM_SLOTS);
+    slot_set_var(&slots[id], addr, val);
+}
+
+void vm_tick(void)
+{
+    /* Decrement timers */
+    for (int i = 0 ; i < VM_SLOTS ; ++i) {
+        if (!slots[i].schedule) {
+            continue;
+        }
+        uint8_t v = slot_get_var(&slots[i], V_TIMER_1_256MS);
+        if (v) {
+            slot_set_var(&slots[i], V_TIMER_1_256MS, v - 1);
+        }
+        v = slot_get_var(&slots[i], V_TIMER_2_256MS);
+        if (v) {
+            slot_set_var(&slots[i], V_TIMER_2_256MS, v - 1);
+        }
+    }
+    /* Run instructions */
+    for (int i = 0 ; i < VM_SLOTS ; ++i) {
+        if (!slots[i].schedule) {
+            continue;
+        }
+        for (int j = 0 ; j < INSTRUCTIONS_PER_TICK ; ++j) {
+            if (slot_step(&slots[i])) {
+                break;
+            }
+        }
+    }
+}
+
+bool vm_has_drivelock(void)
+{
+    for (int i = 0 ; i < VM_SLOTS ; ++i) {
+        if (!slots[i].schedule) {
+            continue;
+        }
+        if (slot_get_var(&slots[i], F_DRIVELOCK)) {
+            return true;
+        }
+    }
+    return false;
+}

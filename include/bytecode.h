@@ -54,7 +54,8 @@
 #define I_RESET7    (I_RESET0 + 7)
 #define I_ADD       0x28
 #define I_SUB       0x29
+#define I_SWITCH    0x2a
 
-#define FUNC_RAND    0x00
+#define FUNC_RAND   0x00
 
 #endif

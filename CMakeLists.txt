@@ -13,7 +13,9 @@ endif()
 add_compile_definitions(EMULATOR)
 
 add_subdirectory(libvm)
-add_subdirectory(sample)
+if (NOT DEFINED ENV{CI})
+    add_subdirectory(sample)
+endif()
 
 #cmake -DCMAKE_BUILD_TYPE=Release ..
 #cmake -DCMAKE_BUILD_TYPE=Debug ..

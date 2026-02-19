@@ -8,6 +8,7 @@ typedef struct Schedule {
     const char *name;
 #endif
     uint32_t script_size;
+    uint32_t start;
     uint8_t script[];
 } Schedule;
 

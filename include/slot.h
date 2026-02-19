@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "variables.h"
 
 typedef struct Schedule Schedule;
 
@@ -13,10 +14,15 @@ typedef struct Slot {
     uint32_t pc;
     uint8_t sp;
     bool flag;
-    uint8_t stack[SLOT_STACK_SIZE];
+    /* 16-bit to allow signed values */
+    int16_t stack[SLOT_STACK_SIZE];
+    uint8_t locals[VAR_LOCAL_SIZE];
 } Slot;
 
 void slot_init(Slot *slot, const Schedule *schedule);
-void slot_step(Slot *slot);
+/* Returns true if wait instruction was executed */
+bool slot_step(Slot *slot);
+void slot_set_var(Slot *slot, uint16_t addr, uint8_t val);
+uint8_t slot_get_var(Slot *slot, uint16_t addr);
 
 #endif

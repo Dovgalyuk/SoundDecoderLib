@@ -1,9 +1,11 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory.h>
 #include "slot.h"
 #include "schedule.h"
 #include "bytecode.h"
-#include "sound.h"
+#include "player.h"
 #include "vm.h"
 
 #define DEBUG 0
@@ -24,38 +26,95 @@ static uint16_t read_dword(const Schedule *sch, uint32_t *pc)
     return w1 | (w2 << 16);
 }
 
+uint8_t slot_get_var(Slot *slot, uint16_t addr)
+{
+    addr -= VAR_LOCAL_START;
+    assert(addr < VAR_LOCAL_SIZE);
+    return slot->locals[addr];
+}
+
+void slot_set_var(Slot *slot, uint16_t addr, uint8_t val)
+{
+    addr -= VAR_LOCAL_START;
+    assert(addr < VAR_LOCAL_SIZE);
+    slot->locals[addr] = val;
+}
+
+static int16_t slot_read_mem(Slot *slot, uint16_t addr)
+{
+    assert(addr < VAR_END);
+    if (addr - VAR_LOCAL_START < VAR_LOCAL_SIZE) {
+        return slot_get_var(slot, addr);
+    } else {
+        uint8_t v = vm_get_var(addr);
+        if (addr >= VAR_GLOBAL_SIGNED_START) {
+            return (int8_t)v;
+        }
+        return v;
+    }
+}
+
+static void slot_write_mem(Slot *slot, uint16_t addr, uint8_t val)
+{
+    assert(addr < VAR_END);
+    if (addr - VAR_LOCAL_START < VAR_LOCAL_SIZE) {
+        slot_set_var(slot, addr, val);
+    } else {
+        vm_set_var(addr, val);
+    }
+}
+
+static void slot_next_state(Slot *slot, uint16_t addr)
+{
+    slot->pc = addr;
+    /* Stop sound if state switch was caused by immediate transition */
+    if (slot_get_var(slot, F_PLAYING)) {
+        player_abort_slot(slot);
+    }
+    /* Reset drive-related variables */
+    slot_set_var(slot, F_DRIVELOCK, 0);
+    /* Reset sound-related variables */
+    slot_set_var(slot, F_RESTORE, 0);
+    slot_set_var(slot, F_PLAYING, 0);
+}
+
 void slot_init(Slot *slot, const Schedule *schedule)
 {
     slot->schedule = schedule;
-    slot->pc = 0;
+    slot->pc = schedule->start;
     slot->sp = 0;
+    slot->flag = false;
+    memset(slot->locals, 0, sizeof(slot->locals));
 }
 
-void slot_step(Slot *slot)
+bool slot_step(Slot *slot)
 {
+    if (!slot->schedule) {
+        return true;
+    }
     int32_t first = slot->pc;
     uint8_t op = slot->schedule->script[slot->pc++];
     uint8_t oparg;
     uint8_t arg8;
     uint16_t arg16;
     uint32_t arg32;
-    DPRINTF("op = %x\n", op);
+    DPRINTF("%d:\t0x%x\t", first, op);
     switch (op) {
     case I_TEST0...I_TEST7:
         oparg = op - I_TEST0;
         arg8 = slot->schedule->script[slot->pc++];
         DPRINTF("TEST%d %d\n", oparg, arg8);
-        slot->flag = vm_memory_read(arg8) & (1 << oparg);
+        slot->flag = slot_read_mem(slot, arg8) & (1 << oparg);
         break;
     case I_LOADV:
         arg8 = slot->schedule->script[slot->pc++];
         DPRINTF("LOADV %d\n", arg8);
-        slot->stack[slot->sp++] = vm_memory_read(arg8);
+        slot->stack[slot->sp++] = slot_read_mem(slot, arg8);
         break;
     case I_LOADI:
-        arg8 = slot->schedule->script[slot->pc++];
-        DPRINTF("LOADI %d\n", arg8);
-        slot->stack[slot->sp++] = arg8;
+        arg16 = read_word(slot->schedule, &slot->pc);
+        DPRINTF("LOADI %d\n", arg16);
+        slot->stack[slot->sp++] = arg16;
         break;
     case I_JUMP:
         arg16 = read_word(slot->schedule, &slot->pc);
@@ -78,10 +137,10 @@ void slot_step(Slot *slot)
         break;
     case I_CONDEQ...I_CONDLE:
         oparg = op - I_COND;
-        DPRINTF("COND%d %d\n", oparg, arg8);
+        DPRINTF("COND%d\n", oparg);
         {
-            uint8_t op1 = slot->stack[--slot->sp];
-            uint8_t op2 = slot->stack[--slot->sp];
+            int16_t op1 = slot->stack[--slot->sp];
+            int16_t op2 = slot->stack[--slot->sp];
             switch (oparg) {
             case C_EQ:
                 slot->flag = op1 == op2;
@@ -111,17 +170,16 @@ void slot_step(Slot *slot)
     case I_NEXT:
         arg32 = read_dword(slot->schedule, &slot->pc);
         DPRINTF("NEXT %d\n", arg32);
-        slot->pc = arg32;
+        slot_next_state(slot, arg32);
         break;
     case I_WAIT:
         DPRINTF("WAIT\n");
-        /* Do nothing */
-        break;
+        return true;
     case I_PLAY:
         arg16 = read_word(slot->schedule, &slot->pc);
         arg8 = slot->schedule->script[slot->pc++];
         DPRINTF("PLAY %d %d\n", arg16, arg8);
-        play_sound(arg16);
+        play_slot_sound(slot, arg16, arg8);
         break;
     case I_FUNC:
         arg8 = slot->schedule->script[slot->pc++];
@@ -144,28 +202,31 @@ void slot_step(Slot *slot)
     case I_STOREV:
         arg8 = slot->schedule->script[slot->pc++];
         DPRINTF("STOREV %d\n", arg8);
-        vm_memory_write(arg8, slot->stack[--slot->sp]);
+        slot_write_mem(slot, arg8, slot->stack[--slot->sp]);
         break;
     case I_SET0...I_SET7:
         {
             oparg = op - I_SET0;
             arg8 = slot->schedule->script[slot->pc++];
-            uint8_t tmp = vm_memory_read(arg8);
+            DPRINTF("SET%d %d\n", oparg, arg8);
+            uint8_t tmp = slot_read_mem(slot, arg8);
             tmp |= 1 << oparg;
-            vm_memory_write(arg8, tmp);
+            slot_write_mem(slot, arg8, tmp);
         }
         break;
     case I_RESET0...I_RESET7:
         {
             oparg = op - I_RESET0;
             arg8 = slot->schedule->script[slot->pc++];
-            uint8_t tmp = vm_memory_read(arg8);
+            DPRINTF("RESET%d %d\n", oparg, arg8);
+            uint8_t tmp = slot_read_mem(slot, arg8);
             tmp &= ~(1 << oparg);
-            vm_memory_write(arg8, tmp);
+            slot_write_mem(slot, arg8, tmp);
         }
         break;
     case I_ADD:
         {
+            DPRINTF("ADD\n");
             uint8_t op1 = slot->stack[--slot->sp];
             uint8_t op2 = slot->stack[--slot->sp];
             slot->stack[slot->sp++] = op1 + op2;
@@ -173,9 +234,20 @@ void slot_step(Slot *slot)
         break;
     case I_SUB:
         {
+            DPRINTF("SUB\n");
             uint8_t op1 = slot->stack[--slot->sp];
             uint8_t op2 = slot->stack[--slot->sp];
             slot->stack[slot->sp++] = op1 - op2;
+        }
+        break;
+    case I_SWITCH:
+        {
+            arg8 = slot->schedule->script[slot->pc++];
+            DPRINTF("SWITCH %d\n", arg8);
+            int x = rand() % arg8;
+            uint32_t pc = slot->pc + x * 2;
+            int16_t off = read_word(slot->schedule, &pc);
+            slot->pc = first + off;
         }
         break;
     default:
@@ -183,4 +255,5 @@ void slot_step(Slot *slot)
         DPRINTF("ERROR instr\n");
         break;
     }
+    return false;
 }
