@@ -2,29 +2,32 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-//#include "freertos/ringbuf.h"
-#include "freertos/semphr.h"
-// #include "driver/dac_continuous.h"
-#include "driver/gptimer.h"
-#include "driver/dac_oneshot.h"
 #include "i2s_pins.h"
 #include "esp_check.h"
 #include "esp_log.h"
+
+#if CONFIG_PLAYER_DAC
+#include "driver/gptimer.h"
+#include "driver/dac_oneshot.h"
+#endif
+#if CONFIG_PLAYER_I2S
+#include "driver/i2s_pdm.h"
+#include "driver/gpio.h"
+#endif
 
 #include "player.h"
 #include "audio.h"
 #include "slot.h"
 #include "vm.h"
 #include "variables.h"
+#include "schedule.h"
 
 #define TAG "player"
 
 #define SOUND_CHANNELS 4
-#define QUEUE_SIZE 10240
 
 #define PDM_TX_CLK_IO           I2S_BCLK_IO1      // I2S PDM TX clock io number
 #define PDM_TX_DOUT_IO          I2S_DOUT_IO1      // I2S PDM TX data out io number
-
 #define PDM_TX_FREQ_HZ          CONFIG_AUDIO_SAMPLE_RATE
 
 typedef struct SoundChannel {
@@ -32,131 +35,27 @@ typedef struct SoundChannel {
     /* channel is acquired when file is not NULL */
     WaveFile *file;
     uint8_t priority;
+    uint8_t volume;
 } SoundChannel;
 
-static dac_oneshot_handle_t chan0_handle;
 static SoundChannel channels[SOUND_CHANNELS];
-static uint16_t queue[QUEUE_SIZE];
+
+#if CONFIG_PLAYER_DAC
+#define QUEUE_SIZE 2048
+#define QUEUE_MAX 1900
+#define QUEUE_MIN 900
+static uint8_t queue[QUEUE_SIZE];
+static dac_oneshot_handle_t chan0_handle;
 static volatile uint16_t queue_head, queue_tail;
-
-#if 0
-
-////////////////////////////////////////
-// DAC continuous
-
-#define RINGBUF_HIGHEST_WATER_LEVEL    (32 * 1024)
-#define RINGBUF_PREFETCH_WATER_LEVEL   (20 * 1024)
-
-static const char *TAG = "dac_audio";
-
-static dac_continuous_handle_t dac_handle;
-static RingbufHandle_t ringbuf;
-static SemaphoreHandle_t write_semaphore;
-
-// static void player_dac_task(void *args)
-// {
-//     uint8_t *data = NULL;
-//     size_t item_size = 0;
-//     const size_t item_size_upto = 240 * 6;
-//     size_t bytes_written = 0;
-
-//     while (1) {
-//         if (pdTRUE == xSemaphoreTake(write_semaphore, portMAX_DELAY)) {
-//             while (1) {
-//                 item_size = 0;
-//                 /* receive data from ringbuffer and write it to DAC DMA transmit buffer */
-//                 data = (uint8_t *)xRingbufferReceiveUpTo(ringbuf, &item_size, (TickType_t)pdMS_TO_TICKS(20), item_size_upto);
-//                 if (item_size == 0) {
-//                     ESP_LOGI(TAG, "ringbuffer underflowed!");
-//                     // s_dac_cb.ringbuffer_mode = RINGBUFFER_MODE_PREFETCHING;
-//                     break;
-//                 }
-
-//                 dac_continuous_write(dac_handle, data, item_size, &bytes_written, -1);
-//                 vRingbufferReturnItem(ringbuf, (void *)data);
-//             }
-//         }
-//     }
-// }
-
-static void player_mixer_task(void *args)
-{
-    size_t item_size = 0;
-
-    while (1) {
-        uint8_t data[256];
-        uint16_t size = 0;
-        dac_continuous_write(dac_handle, data, size, &bytes_written, -1);
-
-        // xRingbufferSend(ringbuf, (void *)data, size, (TickType_t)0);
-
-        // vRingbufferGetInfo(ringbuf, NULL, NULL, NULL, NULL, &item_size);
-        // if (item_size >= RINGBUF_PREFETCH_WATER_LEVEL) {
-        //     if (pdFALSE == xSemaphoreGive(write_semaphore)) {
-        //         ESP_LOGE(TAG, "semaphore give failed");
-        //     }
-        // }
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-}
-
-/// main
-
-    ESP_LOGI(TAG, "DAC audio example start");
-    ESP_LOGI(TAG, "--------------------------------------");
-
-    dac_continuous_config_t cont_cfg = {
-        .chan_mask = DAC_CHANNEL_MASK_CH0,
-        .desc_num = 4,
-        .buf_size = 2048,
-        .freq_hz = CONFIG_AUDIO_SAMPLE_RATE,
-        .offset = 0,
-        .clk_src = DAC_DIGI_CLK_SRC_DEFAULT,
-        /* Assume the data in buffer is 'A B C D E F'
-         * DAC_CHANNEL_MODE_SIMUL:
-         *      - channel 0: A B C D E F
-         *      - channel 1: A B C D E F
-         * DAC_CHANNEL_MODE_ALTER:
-         *      - channel 0: A C E
-         *      - channel 1: B D F
-         */
-        .chan_mode = DAC_CHANNEL_MODE_SIMUL,
-    };
-    /* Allocate continuous channels */
-    ESP_ERROR_CHECK(dac_continuous_new_channels(&cont_cfg, &dac_handle));
-
-    if ((write_semaphore = xSemaphoreCreateBinary()) == NULL) {
-        ESP_LOGE(TAG, "Semaphore create failed");
-        return;
-    }
-    if ((ringbuf = xRingbufferCreate(RINGBUF_HIGHEST_WATER_LEVEL, RINGBUF_TYPE_BYTEBUF)) == NULL) {
-        ESP_LOGE(TAG, "ringbuffer create failed");
-        return;
-    }
-
-    // dac_event_callbacks_t cbs = {
-    //     .on_convert_done = dac_on_convert_done_callback,
-    //     .on_stop = NULL,
-    // };
-    // /* Must register the callback if using asynchronous writing */
-    // ESP_ERROR_CHECK(dac_continuous_register_event_callback(dac_handle, &cbs, NULL));
-
-    /* Enable the continuous channels */
-    ESP_ERROR_CHECK(dac_continuous_enable(dac_handle));
-    ESP_LOGI(TAG, "DAC initialized success, DAC DMA is ready");
-
-    // ????
-    // ESP_ERROR_CHECK(dac_continuous_start_async_writing(dac_handle));
-
-    //xTaskCreate(player_dac_task, "player_task", 1024, NULL, 5, NULL);
-    xTaskCreate(player_mixer_task, "player_task", 1024, NULL, 5, NULL);
-
+#endif
+#if CONFIG_PLAYER_I2S
+/* Limited by DMA buffer size=2046 */
+#define BUFFER_SIZE 2000
+static uint16_t buffer[BUFFER_SIZE];
+i2s_chan_handle_t tx_chan;
 #endif
 
-//#if 0
-
-/////////////////////////////////////////////////
-// DAC oneshot
+#if CONFIG_PLAYER_DAC
 
 /* Timer interrupt service routine */
 static bool IRAM_ATTR player_dac_write_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data)
@@ -169,6 +68,8 @@ static bool IRAM_ATTR player_dac_write_cb(gptimer_handle_t timer, const gptimer_
     dac_oneshot_output_voltage(chan0_handle, volume);
     return false;
 }
+
+#endif
 
 /////////////////// main
 
@@ -214,75 +115,99 @@ static void player_clear_channel(SoundChannel *ch)
 
 static void player_mixer_task(void *args)
 {
-    //i2s_chan_handle_t tx_chan = args;
+#if CONFIG_PLAYER_DAC
     while (true) {
-        uint16_t next = (queue_tail + 1) % QUEUE_SIZE;
-        if (next == queue_head) {
+        uint16_t size = (QUEUE_SIZE + queue_tail - queue_head) % QUEUE_SIZE;
+        if (size >= QUEUE_MIN) {
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        bool found = false;
-        int32_t s = 0;
-        for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
-            if (channels[i].file) {
-                uint16_t v;
-                if (wave_next_sample(channels[i].file, &v)) {
-                    found = true;
-                    s = (int16_t)v;
-                } else {
-                    player_clear_channel(&channels[i]);
-                    vTaskDelay(pdMS_TO_TICKS(30));
+        uint16_t count = QUEUE_MAX - size;
+        while (count--) {
+            bool found = false;
+            uint16_t next = (queue_tail + 1) % QUEUE_SIZE;
+            int32_t s = 0;
+            for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
+                if (channels[i].file) {
+                    uint16_t v;
+                    if (wave_next_sample(channels[i].file, &v)) {
+                        found = true;
+                        s += (int16_t)v;
+                    } else {
+                        player_clear_channel(&channels[i]);
+                        /* Switch to other tasks to allow continuous playing
+                           by starting next sample. */
+                        count = 0;
+                    }
                 }
             }
-        }
-        if (found) {
+            if (!found) {
+                break;
+            }
+            if (s > 32767) {
+                s = 32767;
+            } else if (s < -32767) {
+                s = -32767;
+            }
+            s /= 2;
             queue[next] = (s + 0x8000) / 0x100;
             queue_tail = next;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+#endif
+#if CONFIG_PLAYER_I2S
+    while (true) {
+        uint16_t count = BUFFER_SIZE;
+        uint16_t last = 0;
+        for (last = 0 ; last < count ; ++last) {
+            bool found = false;
+            int32_t s = 0;
+            for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
+                if (channels[i].file) {
+                    uint16_t v;
+                    if (wave_next_sample(channels[i].file, &v)) {
+                        found = true;
+                        s += (int16_t)v * channels[i].volume;
+                    } else {
+                        player_clear_channel(&channels[i]);
+                        /* Switch to other tasks to allow continuous playing
+                           by starting next sample. */
+                        vTaskDelay(pdMS_TO_TICKS(10));
+                        // count = 0;
+                    }
+                }
+            }
+            if (!found) {
+                break;
+            }
+            /* Divide by 100% volume */
+            s /= 128;
+            /* Saturated overflow */
+            if (s > 32767) {
+                s = 32767;
+            } else if (s < -32767) {
+                s = -32767;
+            }
+            s /= 20;
+            buffer[last] = s;
+        }
+        if (last) {
+            /* TODO: check timeout and retry? */
+            if (i2s_channel_write(tx_chan, buffer, last * sizeof(uint16_t), NULL, 1000) != ESP_OK) {
+                printf("Write Task: i2s write failed\n");
+            }
         } else {
             vTaskDelay(pdMS_TO_TICKS(10));
         }
-
-        // size_t written = 0;
-        // if (i2s_channel_write(tx_chan, queue, 0, &written, 1000) != ESP_OK) {
-        //     printf("Write Task: i2s write failed\n");
-        // }
     }
+#endif
 }
 
 void player_init(void)
 {
-#if 0
-    i2s_chan_handle_t tx_chan;        // I2S tx channel handler
-    /* Setp 1: Determine the I2S channel configuration and allocate TX channel only
-     * The default configuration can be generated by the helper macro,
-     * it only requires the I2S controller id and I2S role,
-     * but note that PDM channel can only be registered on I2S_NUM_0 */
-    i2s_chan_config_t tx_chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
-    tx_chan_cfg.auto_clear = true;
-    ESP_ERROR_CHECK(i2s_new_channel(&tx_chan_cfg, &tx_chan, NULL));
-
-    /* Step 2: Setting the configurations of PDM TX mode and initialize the TX channel
-     * The slot configuration and clock configuration can be generated by the macros
-     * These two helper macros is defined in 'i2s_pdm.h' which can only be used in PDM TX mode.
-     * They can help to specify the slot and clock configurations for initialization or re-configuring */
-    i2s_pdm_tx_config_t pdm_tx_cfg = {
-        .clk_cfg = I2S_PDM_TX_CLK_DEFAULT_CONFIG(PDM_TX_FREQ_HZ),
-        /* The data bit-width of PDM mode is fixed to 16 */
-        .slot_cfg = I2S_PDM_TX_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
-        .gpio_cfg = {
-            .clk = PDM_TX_CLK_IO,
-            .dout = PDM_TX_DOUT_IO,
-            .invert_flags = {
-                .clk_inv = false,
-            },
-        },
-    };
-    ESP_ERROR_CHECK(i2s_channel_init_pdm_tx_mode(tx_chan, &pdm_tx_cfg));
-
-    /* Step 3: Enable the tx channel before writing data */
-    ESP_ERROR_CHECK(i2s_channel_enable(tx_chan));
-#endif
-
+#if CONFIG_PLAYER_DAC
+    /* DAC */
     gptimer_handle_t gptimer = NULL;
     gptimer_config_t timer_config = {
         .clk_src = GPTIMER_CLK_SRC_DEFAULT,
@@ -307,8 +232,38 @@ void player_init(void)
     ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
     ESP_ERROR_CHECK(gptimer_enable(gptimer));
     ESP_ERROR_CHECK(gptimer_start(gptimer));
+#endif
+#if CONFIG_PLAYER_I2S
+    /* I2S */
+    i2s_chan_config_t tx_chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
+    tx_chan_cfg.auto_clear = true;
+    tx_chan_cfg.dma_desc_num = 4;
+    tx_chan_cfg.dma_frame_num = BUFFER_SIZE;
+    ESP_ERROR_CHECK(i2s_new_channel(&tx_chan_cfg, &tx_chan, NULL));
 
-    xTaskCreatePinnedToCore(player_mixer_task, "player_task", 2560, 0/*tx_chan*/, 5, NULL, 1);
+    /* Step 2: Setting the configurations of PDM TX mode and initialize the TX channel
+     * The slot configuration and clock configuration can be generated by the macros
+     * These two helper macros is defined in 'i2s_pdm.h' which can only be used in PDM TX mode.
+     * They can help to specify the slot and clock configurations for initialization or re-configuring */
+    i2s_pdm_tx_config_t pdm_tx_cfg = {
+        .clk_cfg = I2S_PDM_TX_CLK_DEFAULT_CONFIG(PDM_TX_FREQ_HZ),
+        /* The data bit-width of PDM mode is fixed to 16 */
+        .slot_cfg = I2S_PDM_TX_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
+        .gpio_cfg = {
+            .clk = PDM_TX_CLK_IO,
+            .dout = PDM_TX_DOUT_IO,
+            .invert_flags = {
+                .clk_inv = false,
+            },
+        },
+    };
+    ESP_ERROR_CHECK(i2s_channel_init_pdm_tx_mode(tx_chan, &pdm_tx_cfg));
+
+    /* Step 3: Enable the tx channel before writing data */
+    ESP_ERROR_CHECK(i2s_channel_enable(tx_chan));
+#endif
+
+    xTaskCreatePinnedToCore(player_mixer_task, "player_task", 2560, 0, 5, NULL, 1);
 }
 
 void player_clear(void)
@@ -335,6 +290,7 @@ static SoundChannel *player_acquire_channel(Slot *slot, uint8_t priority)
         if (!channels[i].file) {
             channels[i].slot = slot;
             channels[i].priority = priority;
+            channels[i].volume = slot->schedule->volume;
             return &channels[i];
         }
     }
@@ -354,44 +310,6 @@ void play_slot_sound(Slot *slot, uint16_t id, uint8_t priority)
         printf("Can't open wave file\n");
         return;
     }
+    /* TODO: get volume from Wave */
     slot_started_sound(slot);
 }
-
-
-
-/*
-        // Stuff with silence to start
-        uint32_t zeros[32] __attribute__((aligned(4))) = {};
-        while (_out->availableForWrite() > 32) {
-            _out->write((uint8_t *)zeros, sizeof(zeros));
-        }
-
-*/
-
-
-/**
-    @brief Generate a single frame worth of stereo samples by combining all inputs
-void generateOneFrame() {
-    // Collect all the input leg buffers
-    int16_t *leg[_input.size()];
-    for (size_t i = 0; i < _input.size(); i++) {
-        leg[i] = (int16_t *)_input[i]->getResampledBuffer();
-    }
-
-    // Sum them up with saturating arithmetic
-    for (size_t i = 0; i < _outWords * 2; i++) {
-        int32_t sum = 0;
-        for (size_t j = 0; j < _input.size(); j++) {
-            sum += leg[j][i];
-        }
-        if (sum > 32767) {
-            sum = 32767;
-        } else if (sum < -32767) {
-            sum = -32767;
-        }
-        _outBuff[i] = (int16_t)sum;
-    }
-}
-*/
-
-

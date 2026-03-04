@@ -20,12 +20,12 @@ static uint16_t read_word(const Schedule *sch, uint32_t *pc)
     return res;
 }
 
-static uint16_t read_dword(const Schedule *sch, uint32_t *pc)
-{
-    uint32_t w1 = read_word(sch, pc);
-    uint32_t w2 = read_word(sch, pc);
-    return w1 | (w2 << 16);
-}
+// static uint16_t read_dword(const Schedule *sch, uint32_t *pc)
+// {
+//     uint32_t w1 = read_word(sch, pc);
+//     uint32_t w2 = read_word(sch, pc);
+//     return w1 | (w2 << 16);
+// }
 
 uint8_t slot_get_var(Slot *slot, uint16_t addr)
 {
@@ -67,7 +67,7 @@ static void slot_write_mem(Slot *slot, uint16_t addr, uint8_t val)
 
 static void slot_next_state(Slot *slot, uint32_t addr)
 {
-    printf("Next %d\n", (int)addr);
+    //printf("Next %d\n", (int)addr);
     slot->nextstack[slot->nextsp] = slot->pc;
     slot->nextsp = (slot->nextsp + 1) % NEXT_STACK_SIZE;
     slot->pc = addr;
@@ -108,7 +108,7 @@ bool slot_step(Slot *slot)
     uint8_t oparg;
     uint8_t arg8;
     uint16_t arg16;
-    uint32_t arg32;
+    // uint32_t arg32;
     DPRINTF("%"PRId32":\t0x%x\t", first, op);
     switch (op) {
     case I_TEST0...I_TEST7:
@@ -130,20 +130,20 @@ bool slot_step(Slot *slot)
     case I_JUMP:
         arg16 = read_word(slot->schedule, &slot->pc);
         DPRINTF("JUMP %d\n", arg16);
-        slot->pc = first + (int16_t)arg16;
+        slot->pc = arg16;
         break;
     case I_JUMPF:
         arg16 = read_word(slot->schedule, &slot->pc);
         DPRINTF("JUMPF %d\n", arg16);
         if (!slot->flag) {
-            slot->pc = first + (int16_t)arg16;
+            slot->pc = arg16;
         }
         break;
     case I_JUMPT:
         arg16 = read_word(slot->schedule, &slot->pc);
         DPRINTF("JUMPT %d\n", arg16);
         if (slot->flag) {
-            slot->pc = first + (int16_t)arg16;
+            slot->pc = arg16;
         }
         break;
     case I_CONDEQ...I_CONDLE:
@@ -179,9 +179,9 @@ bool slot_step(Slot *slot)
         }
         break;
     case I_NEXT:
-        arg32 = read_dword(slot->schedule, &slot->pc);
-        DPRINTF("NEXT %"PRId32"\n", arg32);
-        slot_next_state(slot, arg32);
+        arg16 = read_word(slot->schedule, &slot->pc);
+        DPRINTF("NEXT %d\n", arg16);
+        slot_next_state(slot, arg16);
         break;
     case I_WAIT:
         DPRINTF("WAIT\n");
@@ -257,8 +257,8 @@ bool slot_step(Slot *slot)
             DPRINTF("SWITCH %d\n", arg8);
             int x = rand() % arg8;
             uint32_t pc = slot->pc + x * 2;
-            int16_t off = read_word(slot->schedule, &pc);
-            slot->pc = first + off;
+            uint16_t target = read_word(slot->schedule, &pc);
+            slot->pc = target;
         }
         break;
     case I_RET:

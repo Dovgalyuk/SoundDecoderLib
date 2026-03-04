@@ -6,7 +6,7 @@
 #include "schedule.h"
 #include "clock.h"
 
-#define INSTRUCTIONS_PER_TICK 4
+#define INSTRUCTIONS_PER_TICK 128
 
 static uint8_t vm_type;
 static Slot slots[VM_SLOTS];
@@ -44,21 +44,13 @@ void vm_tick(uint32_t t)
 {
     static uint32_t trigger_time;
     /* Set trigger */
-    trigger_time += t;
+    //trigger_time += t;
     uint32_t period = (100 + 255 - vm_get_var(V_SPEED)) * 2;
-    if (trigger_time >= period) {
-        trigger_time = 0;
-    }
-    if (vm_get_var(V_SPEED) && trigger_time <= 80) {
-        vm_set_var(F_TRIGGER, 1);
-    } else {
-        vm_set_var(F_TRIGGER, 0);
-    }
 
     static uint32_t clock_time;
     clock_time += t;
-    if (clock_time >= 256) {
-        clock_time = 0;
+    while (clock_time >= 256) {
+        clock_time -= 256;
         /* Decrement timers */
         for (int i = 0 ; i < VM_SLOTS ; ++i) {
             if (!slots[i].schedule) {
@@ -75,16 +67,26 @@ void vm_tick(uint32_t t)
         }
     }
     /* Run instructions */
-    // for (int i = 0 ; i < VM_SLOTS ; ++i) {
-    for (int i = 1 ; i < 2 ; ++i) {
-        if (!slots[i].schedule) {
-            continue;
+    for (int j = 0 ; j < INSTRUCTIONS_PER_TICK ; ++j) {
+        ++trigger_time;
+        while (trigger_time >= period) {
+            trigger_time -= period;
         }
-        /* TODO: Special condition for break slot */
-        if (i == 33) {
-            continue;
+        if (vm_get_var(V_SPEED) && trigger_time <= period / 2) {
+            vm_set_var(F_TRIGGER, 1);
+        } else {
+            vm_set_var(F_TRIGGER, 0);
         }
-        for (int j = 0 ; j < INSTRUCTIONS_PER_TICK ; ++j) {
+
+        for (int i = 0 ; i < VM_SLOTS ; ++i) {
+        // for (int i = 0 ; i < 33 ; ++i) {
+            if (!slots[i].schedule) {
+                continue;
+            }
+            /* TODO: Special condition for break slot */
+            if (i == 33) {
+                continue;
+            }
             if (slot_step(&slots[i])) {
                 break;
             }
@@ -119,6 +121,10 @@ void vm_load(const char *name)
         if (slots[slot].schedule) {
             goto ret;
         }
+        uint8_t volume;
+        if (fread(&volume, 1, 1, f) != 1) {
+            goto ret;
+        }
         uint32_t init, length;
         if (fread(&init, 4, 1, f) != 1) {
             goto ret;
@@ -130,6 +136,7 @@ void vm_load(const char *name)
         if (!sch) {
             goto ret;
         }
+        sch->volume = volume;
         sch->start = init;
         sch->script_size = length;
         if (fread(sch->script, 1, length, f) != length) {

@@ -1,4 +1,4 @@
-set(srcs "main.c" "../../../decodervm/vm.c" "../../../decodervm/slot.c"
+set(srcs "decodervm.c" "../../../decodervm/vm.c" "../../../decodervm/slot.c"
     "../../../decodervm/engine.c")
 
 idf_component_register(SRCS ${srcs}

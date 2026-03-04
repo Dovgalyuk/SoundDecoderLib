@@ -40,22 +40,6 @@
 #define V_SELECT        0x4e /* Affects volume */
 #define V_SHARE1        0x4f
 #define V_SHARE2        0x50
-#define V_SV_1          0x51
-#define V_SV_2          0x52
-#define V_SV_3          0x53
-#define V_SV_4          0x54
-#define V_SV_5          0x55
-#define V_SV_6          0x56
-#define V_SV_7          0x57
-#define V_SV_8          0x58
-#define V_SV_9          0x59
-#define V_SV_10         0x5a
-#define V_SV_11         0x5b
-#define V_SV_12         0x5c
-#define V_SV_13         0x5d
-#define V_SV_14         0x5e
-#define V_SV_15         0x5f
-#define V_SV_16         0x60
 
 /* Signed global variables */
 #define V_ACCEL         0xE0

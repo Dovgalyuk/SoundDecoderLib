@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "audio.h"
 
-#define BUFFER_SIZE 10240
+#define BUFFER_SIZE 4096
 
 typedef struct WaveInfo {
     uint32_t offset;
@@ -43,7 +43,7 @@ WaveFile *wave_open(uint16_t num)
         return NULL;
     }
     /* Create and fill WaveFile */
-    WaveFile *w = malloc(sizeof(WaveFile));
+    WaveFile *w = calloc(1, sizeof(WaveFile));
     if (!w) {
         return NULL;
     }
@@ -136,8 +136,7 @@ void wave_init(const char *name)
     if (fread(&wavecount, 2, 1, wavepack) != 1) {
         goto error;
     }
-    waves = malloc(sizeof(WaveInfo) * wavecount);
-    memset(waves, 0, sizeof(WaveInfo) * wavecount);
+    waves = calloc(wavecount, sizeof(WaveInfo));
     if (!waves) {
         goto error;
     }

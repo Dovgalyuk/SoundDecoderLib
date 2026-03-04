@@ -30,8 +30,6 @@
 #define TAG "main"
 #define MOUNT_POINT "/sdcard"
 
-extern Schedule sch;
-
 uint64_t clock_read_ms(void)
 {
     return esp_timer_get_time() / 1000;
@@ -88,15 +86,13 @@ void app_main(void)
 
     printf("Free heap size after init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
 
-    engine_set_throttle(255);
-
     /* Start playing */
+    // engine sound
     vm_set_slot_var(1, F_FUNCTION, 1);
-    vm_set_var(V_SV_1, 32);
-    vm_set_var(V_SV_2, 64);
-    vm_set_var(V_SV_3, 128);
-    vm_set_var(V_SV_4, 192);
-    vm_set_var(V_SV_5, 250);
+    // hiss sound
+    //vm_set_slot_var(32, F_FUNCTION, 1);
+    // bell
+    vm_set_slot_var(4, F_FUNCTION, 1);
 
     xTaskCreatePinnedToCore(vm_task, "vm_task", 2560, NULL, 5, NULL, 1);
 }

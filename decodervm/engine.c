@@ -3,6 +3,8 @@
 #include "variables.h"
 #include "clock.h"
 
+#define TICK_DURATION 896
+
 static int16_t throttle;
 static int16_t speed;
 
@@ -16,14 +18,19 @@ void engine_set_throttle(int16_t v)
     }
 }
 
+int16_t engine_get_speed(void)
+{
+    return speed;
+}
+
 void engine_tick(uint32_t t)
 {
     static uint32_t dt;
     dt += t;
-    if (dt < 896) {
+    if (dt < TICK_DURATION) {
         return;
     }
-    dt = 0;
+    dt -= TICK_DURATION;
     int16_t accel = 0;
     /* calculate new speed */
     if (throttle != speed) {

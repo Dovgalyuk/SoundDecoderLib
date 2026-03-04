@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define VM_SLOTS        64
+#define VM_SLOTS        34
 
 #define VM_STANDARD   0
 #define VM_STEAM1     1

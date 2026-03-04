@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LocoRemote</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, height=device-height">
+  <style>
+    .container {
+      display: grid;
+      grid-template-areas:
+        "header header"
+        "function throttle"
+        "footer footer";
+      grid-template-columns: 2fr 1fr;
+      gap: 5px;
+      padding: 5px;
+    }
+    .container > div.header {
+      grid-area: header;
+      text-align: center;
+    }
+    .container > div.function {
+      grid-area: function;
+    }
+    .container > div.throttle {
+      grid-area: throttle;
+    }
+    .container > div.footer {
+      grid-area: footer;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<div>
+Speed: <output id="speed-output"></output>
+</div>
+<div>
+Throttle: <output id="throttle-output"></output>
+</div>
+</div>
+<div class="function">
+</div>
+<div class="throttle">
+<input id="throttle-slider" type="range" style="writing-mode: vertical-lr; direction: rtl; width: 16px;" min=-255 max=255>
+<input disabled id="speed-slider" type="range" style="writing-mode: vertical-lr; direction: rtl; width: 16px;" min=-255 max=255>
+</div>
+</div>
+<script type="text/javascript">
+function pollStatus() {
+    fetch('/api/status')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('speed-output').innerText = data.speed;
+            document.querySelector("#speed-slider").value = data.speed;
+            // Sync Functions
+            /*if (data.functions) {
+                data.functions.forEach((state, idx) => {
+                    updateFuncBtn(idx, state);
+                });
+            }*/
+        })
+        .catch(e => {
+            const indicator = document.getElementById('connection-status');
+            indicator.classList.remove('connected');
+            indicator.classList.add('disconnected');
+        });
+}
+
+function sendAction(action, value, index) {
+    const payload = { action };
+    if (value !== undefined) payload.value = value;
+
+    fetch('/api/control', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => {
+        if (!r.ok) console.error("Control failed");
+        else pollStatus();
+    });
+}
+
+function setThrottle(val) {
+    sendAction('set_throttle', parseInt(val));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    pollStatus();
+    setInterval(pollStatus, 1000);
+});
+
+const throttleSlider = document.querySelector("#throttle-slider");
+const outputValue = document.querySelector("#throttle-output");
+const reflectValue = (event) => {
+  outputValue.value = event.target.value;
+  setThrottle(event.target.value);
+};
+
+throttleSlider.addEventListener("input", reflectValue);
+throttleSlider.addEventListener("change", reflectValue);
+
+outputValue.value = throttleSlider.value;
+</script>
+
+</body>
+</html>

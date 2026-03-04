@@ -27,6 +27,7 @@ int main(int argc, char **argv)
 
     /* Start playing */
     vm_set_slot_var(1, F_FUNCTION, 1);
+    vm_set_slot_var(32, F_FUNCTION, 1);
     vm_set_var(V_SV_1, 32);
     vm_set_var(V_SV_2, 64);
     vm_set_var(V_SV_3, 128);
@@ -39,7 +40,7 @@ int main(int argc, char **argv)
         //slot_step(&slot);
         engine_tick(10);
         vm_tick(10);
-        printf("speed %d accel %d\n", vm_get_var(V_SPEED), vm_get_var(V_ACCEL));
+        //printf("speed %d accel %d\n", vm_get_var(V_SPEED), vm_get_var(V_ACCEL));
     }
     player_clear();
 }

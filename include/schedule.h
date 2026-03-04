@@ -6,6 +6,7 @@
 typedef struct Schedule {
     uint32_t start;
     uint32_t script_size;
+    uint8_t volume;
     uint8_t script[];
 } Schedule;
 
