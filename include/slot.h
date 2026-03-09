@@ -24,6 +24,7 @@ typedef struct Slot {
 
 void slot_init(Slot *slot, Schedule *schedule);
 void slot_clear(Slot *slot);
+void slot_reset(Slot *slot);
 /* Returns true if wait instruction was executed */
 bool slot_step(Slot *slot);
 void slot_set_var(Slot *slot, uint16_t addr, uint8_t val);

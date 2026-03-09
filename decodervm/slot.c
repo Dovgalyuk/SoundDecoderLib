@@ -108,9 +108,8 @@ void slot_finished_sound(Slot *slot)
 
 void slot_init(Slot *slot, Schedule *schedule)
 {
-    memset(slot, 0, sizeof(*slot));
     slot->schedule = schedule;
-    slot->pc = schedule->start;
+    slot_reset(slot);
 }
 
 void slot_clear(Slot *slot)
@@ -120,6 +119,18 @@ void slot_clear(Slot *slot)
     }
     free(slot->schedule);
     slot->schedule = NULL;
+}
+
+void slot_reset(Slot *slot)
+{
+    if (!slot->schedule) {
+        return;
+    }
+    slot->sp = 0;
+    slot->flag = 0;
+    slot->nextsp = 0;
+    memset(slot->locals, 0, sizeof(slot->locals));
+    slot->pc = slot->schedule->start;
 }
 
 bool slot_step(Slot *slot)

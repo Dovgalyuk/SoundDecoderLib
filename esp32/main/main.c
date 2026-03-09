@@ -79,5 +79,5 @@ void app_main(void)
 
     printf("Free heap size after init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
 
-    xTaskCreatePinnedToCore(vm_task, "vm_task", 2560, NULL, 5, NULL, 0);
+    xTaskCreatePinnedToCore(vm_task, "vm_task", 5120, NULL, 5, NULL, 0);
 }

@@ -60,7 +60,7 @@ void engine_tick(uint32_t t)
     }
     dt -= TICK_DURATION;
     int16_t accel = 0;
-    int mul = brake ? 5 : 1;
+    int mul = brake ? 3 : 1;
     /* calculate new speed */
     if (throttle != speed) {
         if (throttle < speed) {

@@ -24,7 +24,7 @@
 
 #define TAG "player"
 
-#define SOUND_CHANNELS 4
+#define SOUND_CHANNELS 8
 
 #define PDM_TX_CLK_IO           I2S_BCLK_IO1      // I2S PDM TX clock io number
 #define PDM_TX_DOUT_IO          I2S_DOUT_IO1      // I2S PDM TX data out io number
@@ -36,9 +36,11 @@ typedef struct SoundChannel {
     WaveFile *file;
     uint8_t priority;
     uint8_t volume;
+    bool aborted;
 } SoundChannel;
 
 static SoundChannel channels[SOUND_CHANNELS];
+// static SemaphoreHandle_t channel_semaphore;
 
 #if CONFIG_PLAYER_DAC
 #define QUEUE_SIZE 2048
@@ -108,9 +110,12 @@ static void player_clear_channel(SoundChannel *ch)
     if (!ch->file) {
         return;
     }
+    // xSemaphoreTake(channel_semaphore, pdMS_TO_TICKS(1000));
     wave_close(ch->file);
     slot_finished_sound(ch->slot);
     ch->file = NULL;
+    ch->aborted = false;
+    // xSemaphoreGive(channel_semaphore);
 }
 
 static void player_mixer_task(void *args)
@@ -130,26 +135,27 @@ static void player_mixer_task(void *args)
             for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
                 if (channels[i].file) {
                     uint16_t v;
-                    if (wave_next_sample(channels[i].file, &v)) {
-                        found = true;
-                        s += (int16_t)v;
-                    } else {
+                    if (channels[i].aborted || !wave_next_sample(channels[i].file, &v)) {
                         player_clear_channel(&channels[i]);
                         /* Switch to other tasks to allow continuous playing
                            by starting next sample. */
-                        count = 0;
+                        vTaskDelay(pdMS_TO_TICKS(10));
+                    } else {
+                        found = true;
+                        s += (int16_t)v * (int32_t)channels[i].volume;
                     }
                 }
             }
             if (!found) {
                 break;
             }
+            /* Divide by 100% volume */
+            s /= 128;
             if (s > 32767) {
                 s = 32767;
             } else if (s < -32767) {
                 s = -32767;
             }
-            s /= 2;
             queue[next] = (s + 0x8000) / 0x100;
             queue_tail = next;
         }
@@ -166,14 +172,14 @@ static void player_mixer_task(void *args)
             for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
                 if (channels[i].file) {
                     uint16_t v;
-                    if (wave_next_sample(channels[i].file, &v)) {
-                        found = true;
-                        s += (int16_t)v * (int32_t)channels[i].volume;
-                    } else {
+                    if (channels[i].aborted || !wave_next_sample(channels[i].file, &v)) {
                         player_clear_channel(&channels[i]);
                         /* Switch to other tasks to allow continuous playing
                            by starting next sample. */
                         vTaskDelay(pdMS_TO_TICKS(10));
+                    } else {
+                        found = true;
+                        s += (int16_t)v * (int32_t)channels[i].volume;
                     }
                 }
             }
@@ -260,6 +266,8 @@ void player_init(void)
     /* Step 3: Enable the tx channel before writing data */
     ESP_ERROR_CHECK(i2s_channel_enable(tx_chan));
 #endif
+    // channel_semaphore = xSemaphoreCreateBinary();
+    // xSemaphoreGive(channel_semaphore);
 
     xTaskCreatePinnedToCore(player_mixer_task, "player_task", 2560, 0, 5, NULL, 1);
 }
@@ -275,7 +283,7 @@ void player_abort_slot(Slot *slot)
 {
     for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
         if (channels[i].slot == slot) {
-            player_clear_channel(&channels[i]);
+            channels[i].aborted = true;
             break;
         }
     }
@@ -289,6 +297,7 @@ static SoundChannel *player_acquire_channel(Slot *slot, uint8_t priority)
             channels[i].slot = slot;
             channels[i].priority = priority;
             channels[i].volume = slot->schedule->volume;
+            channels[i].aborted = false;
             return &channels[i];
         }
     }
@@ -298,16 +307,22 @@ static SoundChannel *player_acquire_channel(Slot *slot, uint8_t priority)
 void play_slot_sound(Slot *slot, uint16_t id, uint8_t priority)
 {
     ESP_LOGI(TAG, "PLAY %d speed=%d", id, vm_get_var(V_SPEED));
+    // if (xSemaphoreTake(channel_semaphore, pdMS_TO_TICKS(1000)) != pdTRUE) {
+    //     printf("Can't take semaphore\n");
+    //     return;
+    // }
     SoundChannel *ch = player_acquire_channel(slot, priority);
     if (!ch) {
         printf("No available slots\n");
-        return;
+        goto ret;
     }
     ch->file = wave_open(id);
     if (!ch->file) {
         printf("Can't open wave file\n");
-        return;
+        goto ret;
     }
     /* TODO: get volume from Wave */
     slot_started_sound(slot);
+ret:
+    // xSemaphoreGive(channel_semaphore);
 }

@@ -53,6 +53,7 @@ WaveFile *wave_open(uint16_t num)
     w->size = info->length;
     w->sample_count = 0;
     w->prev_sample = 0;
+    w->sample_count = 0;
     w->first = 0;
     //printf("WAVE %d %x %d %d %d\n", num, (int)w->last_offset, (int)w->size, w->info->bits, w->info->samplerate);
     return w;

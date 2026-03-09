@@ -137,3 +137,13 @@ const char *project_get_function_name(uint8_t id)
 {
     return functions[id].name;
 }
+
+void project_stop(void)
+{
+    engine_stop();
+    vm_reset();
+    player_clear();
+    for (int f = 0 ; f < PROJECT_FUNCTIONS ; ++f) {
+        project_set_function(f, project_get_function_status(f));
+    }
+}

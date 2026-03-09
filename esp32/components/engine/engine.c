@@ -26,6 +26,7 @@ CV 4	Deceleration Rate
 #define MOTOR_OUTPUT_DIR2    7
 #define MOTOR_LEDC_CHANNEL   LEDC_CHANNEL_0
 #define MOTOR_PWM_FREQUENCY  40000
+#define MOTOR_PWM_RESOLUTION LEDC_TIMER_8_BIT
 
 static void motor_set_pwm(uint8_t v)
 {
@@ -47,13 +48,13 @@ static void engine_task(void *args)
         {
             gpio_set_level(MOTOR_OUTPUT_DIR1, 1);
             gpio_set_level(MOTOR_OUTPUT_DIR2, 0);
-            motor_set_pwm(speed);
+            motor_set_pwm(speed / 2 + 128);
         }
         else
         {
             gpio_set_level(MOTOR_OUTPUT_DIR1, 0);
             gpio_set_level(MOTOR_OUTPUT_DIR2, 1);
-            motor_set_pwm(-speed);
+            motor_set_pwm(-speed / 2 - 128);
         }
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -64,13 +65,13 @@ void engine_init(void)
     /* Setup PWM pin for motor driver */
     ledc_timer_config_t ledc_timer = {
         .speed_mode       = MOTOR_SPEED_MODE,
-        .duty_resolution  = LEDC_TIMER_8_BIT,
+        .duty_resolution  = MOTOR_PWM_RESOLUTION,
         .timer_num        = LEDC_TIMER_0,
         .freq_hz          = MOTOR_PWM_FREQUENCY,
         .clk_cfg          = LEDC_AUTO_CLK
     };
     ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
-   ledc_channel_config_t ledc_channel = {
+    ledc_channel_config_t ledc_channel = {
         .speed_mode     = MOTOR_SPEED_MODE,
         .channel        = MOTOR_LEDC_CHANNEL,
         .timer_sel      = LEDC_TIMER_0,
@@ -92,5 +93,5 @@ void engine_init(void)
     gpio_config(&io_conf);
 
     /* Main task for controlling speed */
-    xTaskCreatePinnedToCore(engine_task, "engine_task", 2560, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(engine_task, "engine_task", 2560, NULL, 5, NULL, 0);
 }

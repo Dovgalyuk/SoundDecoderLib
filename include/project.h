@@ -16,6 +16,7 @@
 
 void project_open(void);
 void project_close(void);
+void project_stop(void);
 
 void project_set_function(uint8_t f, bool v);
 bool project_get_function_status(uint8_t f);

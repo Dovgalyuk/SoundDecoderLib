@@ -70,7 +70,7 @@ static esp_err_t web_control_handler(httpd_req_t *req)
                 project_set_function(index->valueint, val->valueint);
             }
         } else if (!strcmp(act->valuestring, "stop")) {
-            engine_stop();
+            project_stop();
         } else if (!strcmp(act->valuestring, "brake")) {
             engine_brake();
         }

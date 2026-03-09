@@ -94,8 +94,13 @@ void vm_tick(uint32_t t)
     // project mogul
     // uint32_t period = 950 - vm_get_var(V_SPEED) * 3;
     // project mogul2
-    uint32_t period = 1700 - vm_get_var(V_SPEED) * 5;
+    uint32_t period = (32000 - vm_get_var(V_SPEED) * 109) / 100;
     //period *= INSTRUCTIONS_PER_TICK / 10;
+    trigger_time += t;
+    if (trigger_time >= period) {
+        trigger_time -= period;
+        trigger_set = true;
+    }
 
     static uint32_t clock_time;
     clock_time += t;
@@ -118,11 +123,11 @@ void vm_tick(uint32_t t)
     }
     /* Run instructions */
     for (int j = 0 ; j < INSTRUCTIONS_PER_TICK ; ++j) {
-        trigger_time += 1;
-        if (trigger_time >= period) {
-            trigger_time -= period;
-            trigger_set = true;
-        }
+        // trigger_time += 1;
+        // if (trigger_time >= period) {
+        //     trigger_time -= period;
+        //     trigger_set = true;
+        // }
         /* Trigger at any speed to allow correct emergency stop */
         vm_set_var(F_TRIGGER, trigger_set);
 
@@ -159,5 +164,13 @@ void vm_clear(void)
 {
     for (int i = 0 ; i < VM_SLOTS ; ++i) {
         slot_clear(&slots[i]);
+    }
+}
+
+void vm_reset(void)
+{
+    trigger_set = false;
+    for (int i = 0 ; i < VM_SLOTS ; ++i) {
+        slot_reset(&slots[i]);
     }
 }
