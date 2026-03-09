@@ -65,12 +65,17 @@ static void slot_write_mem(Slot *slot, uint16_t addr, uint8_t val)
     }
 }
 
-static void slot_next_state(Slot *slot, uint32_t addr)
+static void slot_call_state(Slot *slot, uint32_t addr)
 {
-    //printf("Next %d\n", (int)addr);
     slot->nextstack[slot->nextsp] = slot->pc;
     slot->nextsp = (slot->nextsp + 1) % NEXT_STACK_SIZE;
     slot->pc = addr;
+}
+
+static void slot_next_state(Slot *slot, uint32_t addr)
+{
+    //printf("Next %d\n", (int)addr);
+    slot_call_state(slot, addr);
     /* Stop sound if state switch was caused by immediate transition */
     // TODO: maybe will return from that state
     // if (slot_get_var(slot, F_PLAYING)) {
@@ -285,6 +290,11 @@ bool slot_step(Slot *slot)
         slot->nextsp = (NEXT_STACK_SIZE + slot->nextsp - 1) % NEXT_STACK_SIZE;
         slot->pc = slot->nextstack[slot->nextsp];
         //printf("return to %d\n", (int)slot->pc);
+        break;
+    case I_CALL:
+        arg16 = read_word(slot->schedule, &slot->pc);
+        DPRINTF("CALL %d\n", arg16);
+        slot_call_state(slot, arg16);
         break;
     default:
         /* Error */

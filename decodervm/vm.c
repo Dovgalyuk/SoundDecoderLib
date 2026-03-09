@@ -94,8 +94,8 @@ void vm_tick(uint32_t t)
     // project mogul
     // uint32_t period = 950 - vm_get_var(V_SPEED) * 3;
     // project mogul2
-    uint32_t period = 3500 - vm_get_var(V_SPEED) * 8;
-    period *= INSTRUCTIONS_PER_TICK / 10;
+    uint32_t period = 1700 - vm_get_var(V_SPEED) * 5;
+    //period *= INSTRUCTIONS_PER_TICK / 10;
 
     static uint32_t clock_time;
     clock_time += t;
