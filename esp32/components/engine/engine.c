@@ -1,11 +1,6 @@
 /*
 CVs
 
-acceleration speed
-slowdown speed
-max speed
-speed step
-
 CV 2    Start volt
 CV 3	Acceleration Rate (full speed for 0.896*CV3 seconds)
 CV 4	Deceleration Rate
@@ -15,6 +10,7 @@ CV 4	Deceleration Rate
 #include "freertos/task.h"
 #include "driver/ledc.h"
 #include "driver/gpio.h"
+#include "cv.h"
 
 #include "engine.h"
 #include "vm.h"
@@ -27,6 +23,7 @@ CV 4	Deceleration Rate
 #define MOTOR_LEDC_CHANNEL   LEDC_CHANNEL_0
 #define MOTOR_PWM_FREQUENCY  40000
 #define MOTOR_PWM_RESOLUTION LEDC_TIMER_8_BIT
+#define MOTOR_PWM_MAX        255
 
 static void motor_set_pwm(uint8_t v)
 {
@@ -38,24 +35,16 @@ static void engine_task(void *args)
 {
     while (true) {
         int16_t speed = engine_get_speed();
-        if (speed == 0)
-        {
-            gpio_set_level(MOTOR_OUTPUT_DIR1, 0);
-            gpio_set_level(MOTOR_OUTPUT_DIR2, 0);
-            motor_set_pwm(0);
+        uint8_t min = cv_read(CV_VSTART);
+        uint8_t range = 255 - min;
+        uint8_t s = 0;
+        if (speed) {
+            s = min + (range * abs(speed)) / MOTOR_PWM_MAX;
         }
-        else if (speed > 0)
-        {
-            gpio_set_level(MOTOR_OUTPUT_DIR1, 1);
-            gpio_set_level(MOTOR_OUTPUT_DIR2, 0);
-            motor_set_pwm(speed / 2 + 128);
-        }
-        else
-        {
-            gpio_set_level(MOTOR_OUTPUT_DIR1, 0);
-            gpio_set_level(MOTOR_OUTPUT_DIR2, 1);
-            motor_set_pwm(-speed / 2 - 128);
-        }
+        gpio_set_level(MOTOR_OUTPUT_DIR1, speed > 0);
+        gpio_set_level(MOTOR_OUTPUT_DIR2, speed < 0);
+        motor_set_pwm(s);
+
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

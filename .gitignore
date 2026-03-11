@@ -1,6 +1,7 @@
 build
 sdkconfig
 sdkconfig.old
+todo.txt
 
 # Prerequisites
 *.d

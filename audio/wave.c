@@ -11,6 +11,7 @@ typedef struct WaveInfo {
     uint32_t length;
     uint16_t samplerate;
     uint8_t bits;
+    uint8_t volume;
 } WaveInfo;
 
 typedef struct WaveFile {
@@ -125,6 +126,29 @@ bool wave_next_sample(WaveFile *w, uint16_t *sample)
     return true;
 }
 
+uint8_t wave_get_volume(WaveFile *w)
+{
+    if (w && w->info) {
+        return w->info->volume;
+    }
+    return 0;
+}
+
+uint32_t wave_get_length(WaveFile *w)
+{
+    if (!w || !w->info) {
+        return 0;
+    }
+    uint32_t samples = w->info->length;
+    if (w->info->bits == 16) {
+        samples /= 2;
+    }
+    if (w->info->samplerate < WAVE_SAMPLERATE) {
+        samples *= 2;
+    }
+    return samples;
+}
+
 void wave_init(const char *name)
 {
     wavepack = fopen(name, "rb");
@@ -148,6 +172,10 @@ bool wave_load_info(FILE *f)
     if (!file_read_uint8(f, &bits)) {
         return false;
     }
+    uint8_t volume;
+    if (!file_read_uint8(f, &volume)) {
+        return false;
+    }
     uint32_t offset = ftell(f);
     if (fseek(f, length, SEEK_CUR)) {
         return false;
@@ -166,6 +194,7 @@ bool wave_load_info(FILE *f)
     w->length = length;
     w->offset = offset;
     w->samplerate = samplerate;
+    w->volume = volume;
     return true;
 }
 

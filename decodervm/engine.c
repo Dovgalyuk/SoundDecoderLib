@@ -1,16 +1,13 @@
 #include "engine.h"
 #include "vm.h"
 #include "variables.h"
-#include "clock.h"
+#include "cv.h"
 
 #define TICK_DURATION (896 / 5)
 
 static int16_t throttle;
 static int16_t speed;
 static bool brake;
-
-static const int CV3 = 2;
-static const int CV4 = 2;
 
 void engine_set_throttle(int16_t v)
 {
@@ -62,23 +59,25 @@ void engine_tick(uint32_t t)
     int16_t accel = 0;
     int mul = brake ? 3 : 1;
     /* calculate new speed */
-    if (throttle != speed) {
+    if (throttle != speed && !vm_has_drivelock()) {
         if (throttle < speed) {
-            speed -= CV4 * mul;
-            accel = -CV4 * mul;
+            // TODO: cv*0.896 is the full acceleration time
+            //       cv=0 is for acceleration with no delay
+            accel = -cv_read(CV_DECELERATION) * mul;
+            speed += accel;
             if (speed < throttle) {
                 speed = throttle;
             }
         } else {
-            speed += CV3 * mul;
-            accel = CV3 * mul;
+            accel = cv_read(CV_ACCELERATION) * mul;
+            speed += accel;
             if (speed > throttle) {
                 speed = throttle;
             }
         }
-        if (speed == 0) {
-            brake = false;
-        }
+    }
+    if (speed == 0) {
+        brake = false;
     }
     /* update speed, reverse, and acceleration in VM */
     vm_set_var(V_ACCEL, accel);

@@ -4,7 +4,6 @@
 #include "vm.h"
 #include "slot.h"
 #include "schedule.h"
-#include "clock.h"
 #include "audio.h"
 #include "utils.h"
 
@@ -94,7 +93,7 @@ void vm_tick(uint32_t t)
     // project mogul
     // uint32_t period = 950 - vm_get_var(V_SPEED) * 3;
     // project mogul2
-    uint32_t period = (32000 - vm_get_var(V_SPEED) * 109) / 100;
+    uint32_t period = (45000 - vm_get_var(V_SPEED) * 109) / 100;
     //period *= INSTRUCTIONS_PER_TICK / 10;
     trigger_time += t;
     if (trigger_time >= period) {

@@ -13,6 +13,9 @@ bool wave_load_info(FILE *f);
 WaveFile *wave_open(uint16_t num);
 void wave_close(WaveFile *w);
 bool wave_next_sample(WaveFile *w, uint16_t *sample);
+uint8_t wave_get_volume(WaveFile *w);
+/* Length of the wave in samples */
+uint32_t wave_get_length(WaveFile *w);
 void wave_clear(void);
 
 #endif

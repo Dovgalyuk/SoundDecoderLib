@@ -24,7 +24,7 @@
 
 #define TAG "main"
 
-uint64_t clock_read_ms(void)
+static uint64_t clock_read_ms(void)
 {
     return esp_timer_get_time() / 1000;
 }
@@ -35,9 +35,9 @@ static void vm_task(void *args)
     while (true) {
         uint64_t cur_clock = clock_read_ms();
         uint32_t t = cur_clock - last_clock;
+        last_clock = cur_clock;
         engine_tick(t);
         vm_tick(t);
-        last_clock = cur_clock;
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }

@@ -7,5 +7,5 @@ endif()
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS "."
-                       PRIV_REQUIRES fatfs
+                       PRIV_REQUIRES esp_driver_spi esp_driver_gpio spi_flash esp_partition vfs fatfs
                        WHOLE_ARCHIVE)

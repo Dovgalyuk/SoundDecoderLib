@@ -34,13 +34,16 @@ typedef struct SoundChannel {
     Slot *slot;
     /* channel is acquired when file is not NULL */
     WaveFile *file;
+    uint32_t delay;
+    uint32_t volume_step;
+    uint32_t volume_timer;
+    uint16_t volume_slot;
     uint8_t priority;
-    uint8_t volume;
+    uint8_t volume_cur;
     bool aborted;
 } SoundChannel;
 
 static SoundChannel channels[SOUND_CHANNELS];
-// static SemaphoreHandle_t channel_semaphore;
 
 #if CONFIG_PLAYER_DAC
 #define QUEUE_SIZE 2048
@@ -73,55 +76,21 @@ static bool IRAM_ATTR player_dac_write_cb(gptimer_handle_t timer, const gptimer_
 
 #endif
 
-/////////////////// main
-
-    // gptimer_handle_t gptimer = NULL;
-    // gptimer_config_t timer_config = {
-    //     .clk_src = GPTIMER_CLK_SRC_DEFAULT,
-    //     .direction = GPTIMER_COUNT_UP,
-    //     .resolution_hz = 1000000/*CONFIG_AUDIO_SAMPLE_RATE*/,
-    // };
-    // ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
-    // dac_oneshot_config_t dac0_cfg = {
-    //     .chan_id = DAC_CHAN_0,
-    // };
-    // ESP_ERROR_CHECK(dac_oneshot_new_channel(&dac0_cfg, &chan0_handle));
-
-    // gptimer_alarm_config_t alarm_config = {
-    //     .reload_count = 0,
-    //     .alarm_count = 1000000 / CONFIG_AUDIO_SAMPLE_RATE,
-    //     .flags.auto_reload_on_alarm = true,
-    // };
-    // gptimer_event_callbacks_t cbs = {
-    //     .on_alarm = player_dac_write_cb,
-    // };
-    // ESP_ERROR_CHECK(gptimer_register_event_callbacks(gptimer, &cbs, NULL));
-    // ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
-    // ESP_ERROR_CHECK(gptimer_enable(gptimer));
-    // ESP_ERROR_CHECK(gptimer_start(gptimer));
-
-    // TODO: create ring buffer filled by mixer
-
-
-//#endif
-
 static void player_clear_channel(SoundChannel *ch)
 {
     if (!ch->file) {
         return;
     }
-    // xSemaphoreTake(channel_semaphore, pdMS_TO_TICKS(1000));
     wave_close(ch->file);
     slot_finished_sound(ch->slot);
     ch->file = NULL;
     ch->aborted = false;
-    // xSemaphoreGive(channel_semaphore);
 }
 
 static void player_mixer_task(void *args)
 {
-#if CONFIG_PLAYER_DAC
     while (true) {
+#if CONFIG_PLAYER_DAC
         uint16_t size = (QUEUE_SIZE + queue_tail - queue_head) % QUEUE_SIZE;
         if (size >= QUEUE_MIN) {
             vTaskDelay(pdMS_TO_TICKS(10));
@@ -129,57 +98,41 @@ static void player_mixer_task(void *args)
         }
         uint16_t count = QUEUE_MAX - size;
         while (count--) {
-            bool found = false;
             uint16_t next = (queue_tail + 1) % QUEUE_SIZE;
-            int32_t s = 0;
-            for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
-                if (channels[i].file) {
-                    uint16_t v;
-                    if (channels[i].aborted || !wave_next_sample(channels[i].file, &v)) {
-                        player_clear_channel(&channels[i]);
-                        /* Switch to other tasks to allow continuous playing
-                           by starting next sample. */
-                        vTaskDelay(pdMS_TO_TICKS(10));
-                    } else {
-                        found = true;
-                        s += (int16_t)v * (int32_t)channels[i].volume;
-                    }
-                }
-            }
-            if (!found) {
-                break;
-            }
-            /* Divide by 100% volume */
-            s /= 128;
-            if (s > 32767) {
-                s = 32767;
-            } else if (s < -32767) {
-                s = -32767;
-            }
-            queue[next] = (s + 0x8000) / 0x100;
-            queue_tail = next;
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
 #endif
 #if CONFIG_PLAYER_I2S
-    while (true) {
         uint16_t count = BUFFER_SIZE;
         uint16_t last = 0;
         for (last = 0 ; last < count ; ++last) {
+#endif
             bool found = false;
-            int32_t s = 0;
+            /* Requires three volume multiplications */
+            int64_t s = 0;
             for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
+retry:
                 if (channels[i].file) {
                     uint16_t v;
-                    if (channels[i].aborted || !wave_next_sample(channels[i].file, &v)) {
+                    if (!channels[i].aborted && channels[i].delay) {
+                        found = true;
+                        --channels[i].delay;
+                    } else if (channels[i].aborted || !wave_next_sample(channels[i].file, &v)) {
                         player_clear_channel(&channels[i]);
                         /* Switch to other tasks to allow continuous playing
                            by starting next sample. */
                         vTaskDelay(pdMS_TO_TICKS(10));
+                        /* Try to get rid of empty sample between files */
+                        goto retry;
                     } else {
                         found = true;
-                        s += (int16_t)v * (int32_t)channels[i].volume;
+                        s += (int16_t)v
+                            * (int64_t)channels[i].volume_slot
+                            * (int64_t)channels[i].volume_cur;
+                        if (channels[i].volume_step) {
+                            if (!--channels[i].volume_timer) {
+                                channels[i].volume_timer = channels[i].volume_step;
+                                ++channels[i].volume_cur;
+                            }
+                        }
                     }
                 }
             }
@@ -187,25 +140,32 @@ static void player_mixer_task(void *args)
                 break;
             }
             /* Divide by 100% volume */
-            s /= 128;
-            /* Saturated overflow */
+            s /= 128 * 128 * 128;
             if (s > 32767) {
                 s = 32767;
             } else if (s < -32767) {
                 s = -32767;
             }
+#if CONFIG_PLAYER_DAC
+            queue[next] = (s + 0x8000) / 0x100;
+            queue_tail = next;
+#endif
+#if CONFIG_PLAYER_I2S
             buffer[last] = s;
+#endif
         }
+#if CONFIG_PLAYER_I2S
         if (last) {
             /* TODO: check timeout and retry? */
             if (i2s_channel_write(tx_chan, buffer, last * sizeof(uint16_t), NULL, 1000) != ESP_OK) {
                 printf("Write Task: i2s write failed\n");
             }
-        } else {
+        } else
+#endif
+        {
             vTaskDelay(pdMS_TO_TICKS(10));
         }
     }
-#endif
 }
 
 void player_init(void)
@@ -266,8 +226,6 @@ void player_init(void)
     /* Step 3: Enable the tx channel before writing data */
     ESP_ERROR_CHECK(i2s_channel_enable(tx_chan));
 #endif
-    // channel_semaphore = xSemaphoreCreateBinary();
-    // xSemaphoreGive(channel_semaphore);
 
     xTaskCreatePinnedToCore(player_mixer_task, "player_task", 2560, 0, 5, NULL, 1);
 }
@@ -296,7 +254,7 @@ static SoundChannel *player_acquire_channel(Slot *slot, uint8_t priority)
         if (!channels[i].file) {
             channels[i].slot = slot;
             channels[i].priority = priority;
-            channels[i].volume = slot->schedule->volume;
+            channels[i].volume_slot = slot->schedule->volume;
             channels[i].aborted = false;
             return &channels[i];
         }
@@ -304,25 +262,31 @@ static SoundChannel *player_acquire_channel(Slot *slot, uint8_t priority)
     return NULL;
 }
 
-void play_slot_sound(Slot *slot, uint16_t id, uint8_t priority)
+void play_slot_sound(Slot *slot, uint16_t id, uint8_t priority,
+                     uint8_t volmin, uint8_t volmax, uint8_t delay)
 {
     ESP_LOGI(TAG, "PLAY %d speed=%d", id, vm_get_var(V_SPEED));
-    // if (xSemaphoreTake(channel_semaphore, pdMS_TO_TICKS(1000)) != pdTRUE) {
-    //     printf("Can't take semaphore\n");
-    //     return;
-    // }
     SoundChannel *ch = player_acquire_channel(slot, priority);
     if (!ch) {
         printf("No available slots\n");
-        goto ret;
+        return;
     }
     ch->file = wave_open(id);
     if (!ch->file) {
         printf("Can't open wave file\n");
-        goto ret;
+        return;
     }
-    /* TODO: get volume from Wave */
+    ch->volume_cur = volmin;
+    if (volmax != volmin) {
+        uint32_t samples = wave_get_length(ch->file);
+        samples /= volmax - volmin;
+        ch->volume_step = samples;
+        ch->volume_timer = samples;
+    } else {
+        ch->volume_step = 0;
+        ch->volume_timer = 0;
+    }
+    ch->volume_slot *= wave_get_volume(ch->file);
+    ch->delay = (delay * CONFIG_AUDIO_SAMPLE_RATE) / 1000;
     slot_started_sound(slot);
-ret:
-    // xSemaphoreGive(channel_semaphore);
 }
