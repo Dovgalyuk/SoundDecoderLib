@@ -17,9 +17,15 @@ CV 4	Deceleration Rate
 #include "variables.h"
 
 #define MOTOR_SPEED_MODE     LEDC_LOW_SPEED_MODE
+#if CONFIG_IDF_TARGET_ESP32
+#define MOTOR_OUTPUT_PWM     4
+#define MOTOR_OUTPUT_DIR1    2
+#define MOTOR_OUTPUT_DIR2    15
+#elif CONFIG_IDF_TARGET_ESP32S3
 #define MOTOR_OUTPUT_PWM     5
 #define MOTOR_OUTPUT_DIR1    6
 #define MOTOR_OUTPUT_DIR2    7
+#endif
 #define MOTOR_LEDC_CHANNEL   LEDC_CHANNEL_0
 #define MOTOR_PWM_FREQUENCY  40000
 #define MOTOR_PWM_RESOLUTION LEDC_TIMER_8_BIT
@@ -80,7 +86,6 @@ void engine_init(void)
         .pull_up_en = 0,
     };
     gpio_config(&io_conf);
-
     /* Main task for controlling speed */
     xTaskCreatePinnedToCore(engine_task, "engine_task", 2560, NULL, 5, NULL, 0);
 }

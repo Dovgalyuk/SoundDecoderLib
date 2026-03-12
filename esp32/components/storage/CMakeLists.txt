@@ -6,6 +6,6 @@ if("${CONFIG_STORAGE_FLASH}" STREQUAL y)
 endif()
 
 idf_component_register(SRCS ${srcs}
-                       INCLUDE_DIRS "."
                        PRIV_REQUIRES esp_driver_spi esp_driver_gpio spi_flash esp_partition vfs fatfs
+                       INCLUDE_DIRS "." "../../include"
                        WHOLE_ARCHIVE)

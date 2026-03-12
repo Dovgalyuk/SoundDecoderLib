@@ -17,5 +17,6 @@
 #define CV_MAX                  255
 
 uint8_t cv_read(uint16_t id);
+void cv_write(uint16_t id, uint8_t value);
 
 #endif

@@ -4,15 +4,14 @@
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 #include "storage.h"
+#include "pins.h"
 
 static const char *TAG = "sd";
 
-// Pin assignments can be set in menuconfig
-// You can also change the pin assignments here by changing the following 4 lines.
-#define PIN_NUM_MISO  CONFIG_SD_PIN_MISO
-#define PIN_NUM_MOSI  CONFIG_SD_PIN_MOSI
-#define PIN_NUM_CLK   CONFIG_SD_PIN_CLK
-#define PIN_NUM_CS    CONFIG_SD_PIN_CS
+#define PIN_NUM_MISO  SD_PIN_MISO
+#define PIN_NUM_MOSI  SD_PIN_MOSI
+#define PIN_NUM_CLK   SD_PIN_CLK
+#define PIN_NUM_CS    SD_PIN_CS
 
 void storage_init(void)
 {

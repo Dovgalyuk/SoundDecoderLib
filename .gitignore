@@ -2,6 +2,7 @@ build
 sdkconfig
 sdkconfig.old
 todo.txt
+*-backups
 
 # Prerequisites
 *.d

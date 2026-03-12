@@ -2,7 +2,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "i2s_pins.h"
+#include "pins.h"
 #include "esp_check.h"
 #include "esp_log.h"
 

@@ -16,14 +16,8 @@
 #include "driver/gpio.h"
 #include "driver/spi_common.h"
 
+#include "pins.h"
 #include "storage.h"
-
-#define PIN_SPI_MOSI    23
-#define PIN_SPI_MISO    19
-#define PIN_SPI_SCK     18
-#define PIN_SPI_SS      5
-// #define VSPI_IOMUX_PIN_NUM_WP   22
-// #define VSPI_IOMUX_PIN_NUM_HD   21
 
 #define PARTITION_LABEL "sound"
 
@@ -58,9 +52,9 @@ void storage_register_external_partition(void)
 {
     spi_bus_config_t bus_config =
     {
-        .mosi_io_num = PIN_SPI_MOSI,
-        .miso_io_num = PIN_SPI_MISO,
-        .sclk_io_num = PIN_SPI_SCK,
+        .mosi_io_num = FLASH_SPI_MOSI,
+        .miso_io_num = FLASH_SPI_MISO,
+        .sclk_io_num = FLASH_SPI_SCK,
         /* TODO
         .quadwp_io_num = cfg.wp_io_num,
         .quadhd_io_num = cfg.hd_io_num,
@@ -74,7 +68,7 @@ void storage_register_external_partition(void)
 
     esp_flash_spi_device_config_t flash_config = {
         .host_id = SPI3_HOST,
-        .cs_io_num = PIN_SPI_SS,
+        .cs_io_num = FLASH_SPI_SS,
         .io_mode = SPI_FLASH_DIO,
         .freq_mhz = 40,
         .clock_source = SPI_CLK_SRC_DEFAULT,
