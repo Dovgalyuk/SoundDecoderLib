@@ -31,25 +31,24 @@ CV 4	Deceleration Rate
 #define MOTOR_PWM_RESOLUTION LEDC_TIMER_8_BIT
 #define MOTOR_PWM_MAX        255
 
-static void motor_set_pwm(uint8_t v)
-{
-    ledc_set_duty(MOTOR_SPEED_MODE, MOTOR_LEDC_CHANNEL, v);
-    ledc_update_duty(MOTOR_SPEED_MODE, MOTOR_LEDC_CHANNEL);
-}
-
 static void engine_task(void *args)
 {
     while (true) {
-        int16_t speed = engine_get_speed();
+        uint8_t speed = engine_get_speed();
+        bool dir = engine_get_direction();
         uint8_t min = cv_read(CV_VSTART);
         uint8_t range = 255 - min;
         uint8_t s = 0;
         if (speed) {
-            s = min + (range * abs(speed)) / MOTOR_PWM_MAX;
+            s = min + (range * speed) / MOTOR_PWM_MAX;
+            gpio_set_level(MOTOR_OUTPUT_DIR1, dir);
+            gpio_set_level(MOTOR_OUTPUT_DIR2, !dir);
+        } else {
+            gpio_set_level(MOTOR_OUTPUT_DIR1, 0);
+            gpio_set_level(MOTOR_OUTPUT_DIR2, 0);
         }
-        gpio_set_level(MOTOR_OUTPUT_DIR1, speed > 0);
-        gpio_set_level(MOTOR_OUTPUT_DIR2, speed < 0);
-        motor_set_pwm(s);
+        ledc_set_duty(MOTOR_SPEED_MODE, MOTOR_LEDC_CHANNEL, s);
+        ledc_update_duty(MOTOR_SPEED_MODE, MOTOR_LEDC_CHANNEL);
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }

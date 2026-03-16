@@ -15,6 +15,8 @@
 #define F_DRIVELOCK     0x08
 /* Restore sound when re-enabling the slot in case of priority conflict */
 #define F_RESTORE       0x09
+/* Shadow playing flag for switching between two sounds */
+#define F_PLAYING2      0x0a
 #define VAR_LOCAL_SIZE  0x10
 
 #define VAR_GLOBAL_START 0x40
@@ -36,6 +38,40 @@
 #define V_SELECT        0x4e /* Affects volume */
 #define V_SHARE1        0x4f
 #define V_SHARE2        0x50
+#define F_DRIVING       0x51
+
+#define F_KEY0          0x60
+#define F_KEY1          0x61
+#define F_KEY2          0x62
+#define F_KEY3          0x63
+#define F_KEY4          0x64
+#define F_KEY5          0x65
+#define F_KEY6          0x66
+#define F_KEY7          0x67
+#define F_KEY8          0x68
+#define F_KEY9          0x69
+#define F_KEY10         0x6a
+#define F_KEY11         0x6b
+#define F_KEY12         0x6c
+#define F_KEY13         0x6d
+#define F_KEY14         0x6e
+#define F_KEY15         0x6f
+#define F_KEY16         0x70
+#define F_KEY17         0x71
+#define F_KEY18         0x72
+#define F_KEY19         0x73
+#define F_KEY20         0x74
+#define F_KEY21         0x75
+#define F_KEY22         0x76
+#define F_KEY23         0x77
+#define F_KEY24         0x78
+#define F_KEY25         0x79
+#define F_KEY26         0x7a
+#define F_KEY27         0x7b
+#define F_KEY28         0x7c
+#define F_KEY29         0x7d
+#define F_KEY30         0x7e
+#define F_KEY31         0x7f
 
 #define VAR_GLOBAL_SIGNED_START 0xE0
 /* Signed global variables */

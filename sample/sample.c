@@ -20,11 +20,18 @@ int main(int argc, char **argv)
     project_open();
     player_init();
 
-    engine_set_throttle(255);
+    for (int i = 0 ; i < VM_FUNCTION_KEYS ; ++i) {
+        const char *name = project_get_function_key_name(i);
+        if (name) {
+            printf("Func %d = %s\n", i, name);
+        }
+    }
+
+    engine_set_throttle(ENGINE_THROTTLE_STEPS);
 
     /* Start playing */
     vm_set_slot_var(1, F_FUNCTION, 1);
-    vm_set_slot_var(32, F_FUNCTION, 1);
+    //vm_set_slot_var(32, F_FUNCTION, 1);
     //vm_set_slot_var(4, F_FUNCTION, 1);
 
     for (int i = 0 ; i < 3000 ; ++i) {

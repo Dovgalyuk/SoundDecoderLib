@@ -5,8 +5,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define VM_SLOTS        34
-#define VM_SLOT_BRAKE   33
+#define VM_SLOTS         34
+#define VM_SLOT_BRAKE    33
+#define VM_FUNCTION_KEYS 32
 
 typedef struct Slot Slot;
 typedef struct Schedule Schedule;
@@ -26,5 +27,9 @@ uint8_t vm_get_slot_var(uint8_t id, uint16_t addr);
 void vm_tick(uint32_t t);
 bool vm_has_drivelock(void);
 void vm_reset_trigger(void);
+
+void vm_set_function_key(uint8_t f, bool v);
+bool vm_get_function_key(uint8_t f);
+
 
 #endif

@@ -32,6 +32,7 @@
 
 typedef struct SoundChannel {
     Slot *slot;
+    uint8_t subslot;
     /* channel is acquired when file is not NULL */
     WaveFile *file;
     uint32_t delay;
@@ -82,7 +83,7 @@ static void player_clear_channel(SoundChannel *ch)
         return;
     }
     wave_close(ch->file);
-    slot_finished_sound(ch->slot);
+    slot_finished_sound(ch->slot, ch->subslot);
     ch->file = NULL;
     ch->aborted = false;
 }
@@ -141,6 +142,8 @@ retry:
             }
             /* Divide by 100% volume */
             s /= 128 * 128 * 128;
+            /* Testing: 50% volume */
+            s /= 2;
             if (s > 32767) {
                 s = 32767;
             } else if (s < -32767) {
@@ -237,22 +240,23 @@ void player_clear(void)
     }
 }
 
-void player_abort_slot(Slot *slot)
+void player_abort_slot(Slot *slot, uint8_t subslot)
 {
     for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
-        if (channels[i].slot == slot) {
+        if (channels[i].slot == slot && channels[i].subslot == subslot) {
             channels[i].aborted = true;
             break;
         }
     }
 }
 
-static SoundChannel *player_acquire_channel(Slot *slot, uint8_t priority)
+static SoundChannel *player_acquire_channel(Slot *slot, uint8_t subslot, uint8_t priority)
 {
     /* TODO: work with priorities */
     for (int i = 0 ; i < SOUND_CHANNELS ; ++i) {
         if (!channels[i].file) {
             channels[i].slot = slot;
+            channels[i].subslot = subslot;
             channels[i].priority = priority;
             channels[i].volume_slot = slot->schedule->volume;
             channels[i].aborted = false;
@@ -262,11 +266,11 @@ static SoundChannel *player_acquire_channel(Slot *slot, uint8_t priority)
     return NULL;
 }
 
-void play_slot_sound(Slot *slot, uint16_t id, uint8_t priority,
+void play_slot_sound(Slot *slot, uint8_t subslot, uint16_t id, uint8_t priority,
                      uint8_t volmin, uint8_t volmax, uint8_t delay)
 {
     ESP_LOGI(TAG, "PLAY %d speed=%d", id, vm_get_var(V_SPEED));
-    SoundChannel *ch = player_acquire_channel(slot, priority);
+    SoundChannel *ch = player_acquire_channel(slot, subslot, priority);
     if (!ch) {
         printf("No available slots\n");
         return;
@@ -288,5 +292,5 @@ void play_slot_sound(Slot *slot, uint16_t id, uint8_t priority,
     }
     ch->volume_slot *= wave_get_volume(ch->file);
     ch->delay = (delay * CONFIG_AUDIO_SAMPLE_RATE) / 1000;
-    slot_started_sound(slot);
+    slot_started_sound(slot, subslot);
 }

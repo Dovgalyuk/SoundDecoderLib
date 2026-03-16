@@ -25,6 +25,14 @@
 #   define I2S_BCLK_IO1         36
 #   define I2S_WS_IO1           37
 #   define I2S_DOUT_IO1         35
+#   if CONFIG_STORAGE_FLASH
+#       define FLASH_SPI_MOSI    4
+#       define FLASH_SPI_MISO    5
+#       define FLASH_SPI_SCK     2
+#       define FLASH_SPI_SS      8
+#       define FLASH_SPI_WP      6
+#       define FLASH_SPI_HD      7
+#   endif
 #   if CONFIG_STORAGE_SD
 #       define SD_PIN_MOSI      4
 #       define SD_PIN_MISO      5

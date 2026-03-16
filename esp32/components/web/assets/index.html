@@ -124,7 +124,8 @@
     .btn.primary { background-color: var(--primary-color); }
     .btn.warning { background-color: #ff9800; }
     .btn.danger { background-color: var(--danger-color); color: #fff; }
-    .btn.small { padding: 5px 10px; font-size: 0.8rem; background-color: #444; color: #fff; }
+    .btn.small { padding: 5px 10px; font-size: 0.8rem; }
+    .btn.small-dark { padding: 5px 10px; font-size: 0.8rem; background-color: #444; color: #fff; }
 
 /* File Table */
     table {
@@ -134,6 +135,22 @@
     }
     th, td { text-align: left; padding: 10px; border-bottom: 1px solid #333; }
     th { color: #888; }
+
+/* Logs */
+    .terminal {
+        background-color: #000;
+        color: #0f0;
+        font-family: monospace;
+        height: 400px;
+        min-height: 200px;
+        overflow-y: auto;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #333;
+        white-space: pre-wrap;
+        resize: vertical;
+    }
+    .log-controls { margin-bottom: 5px; display: flex; justify-content: space-between; }
   </style>
 </head>
 <body>
@@ -145,7 +162,9 @@
 
     <nav>
         <button class="nav-btn active" onclick="showTab('dashboard')">Dashboard</button>
+        <button class="nav-btn" onclick="showTab('cvs')">CVs</button>
         <button class="nav-btn" onclick="showTab('files')">Files</button>
+        <button class="nav-btn" onclick="showTab('logs')">Logs</button>
     </nav>
 
     <main>
@@ -157,19 +176,39 @@
                     <button class="btn danger" onclick="sendStop()">STOP</button>
                     <button class="btn primary" onclick="sendBrake()">Brake</button>
                 </div>
-                <br>
                 <div class="card" style="margin-top: 10px;">
                     <h3>Throttle / Speed</h3>
-                    <input type="range" id="throttle-slider" min="-255" max="255" value="0" style="width:100%" onchange="setThrottle(this.value)">
-                    <input type="range" id="speed-slider" min="-255" max="255" value="0" style="width:100%" disabled>
+                    <div class="button-group">
+                        <button id="dir-btn" class="btn small" onclick="toggleDir()">FWD</button>
+                        <div class="button-group" style="flex-grow:1">
+                            <input type="range" id="throttle-slider" min="0" max="28" value="0" style="width:100%" onchange="setThrottle(this.value)">
+                            <input type="range" id="speed-slider" min="0" max="28" value="0" style="width:100%" disabled>
+                        </div>
+                    </div>
                 </div>
-
                 <div class="card" style="margin-top: 10px;">
                     <h3>Functions</h3>
                     <div id="func-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">
                         <!-- Populated by JS -->
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- CV Tab -->
+        <section id="cvs" class="tab-content">
+            <div class="card">
+                <h3>CV Configuration <button class="btn small-dark" onclick="loadAllCVs()">Refresh</button></h3>
+                <table id="cv-table">
+                    <thead><tr><th>CV</th><th>Name</th><th>Description</th><th>Value</th><th>Action</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <br>
+                <h4>Custom CV</h4>
+                <input type="number" id="custom-cv" placeholder="CV #" style="width:60px">
+                <input type="number" id="custom-val" placeholder="Value" style="width:60px">
+                <button class="btn small-dark" onclick="rwCustomCV('read')">Read</button>
+                <button class="btn small-dark" onclick="rwCustomCV('write')">Write</button>
             </div>
         </section>
 
@@ -189,15 +228,27 @@
                 <div id="upload-status"></div>
             </div>
         </section>
+
+        <!-- Logs Tab -->
+        <section id="logs" class="tab-content">
+            <div class="log-controls">
+                <button class="btn small" onclick="clearLogs()">Clear View</button>
+            </div>
+            <div id="log-viewer" class="terminal"></div>
+        </section>
     </main>
 </div>
 <script type="text/javascript">
 let currentTab = 'dashboard';
+let logInterval = null;
 let function_info = [];
+let cvListRendered = false;
+let trackableCVS = []; // Fetched from backend
 
 document.addEventListener('DOMContentLoaded', () => {
     showTab('dashboard');
     loadInfo();
+    loadCVDefs();
     statusInterval = setInterval(pollStatus, 1000);
     document.getElementById('upload-project-form').addEventListener('submit', handleProjectUpload);
     document.getElementById('upload-firmware-form').addEventListener('submit', handleFirmwareUpload);
@@ -235,6 +286,14 @@ function loadInfo() {
         });
 }
 
+async function loadCVDefs() {
+    try {
+        const r = await fetch('/api/cv/defs');
+        trackableCVS = await r.json();
+        if (currentTab === 'cvs') renderCVTable();
+    } catch (e) { console.error("Failed to fetch CV defs", e); }
+}
+
 function pollStatus() {
     fetch('/api/status')
         .then(r => r.json())
@@ -243,7 +302,14 @@ function pollStatus() {
             indicator.classList.remove('disconnected');
             indicator.classList.add('connected');
 
-            document.getElementById('speed-slider').value = data.speed;
+            const speed = parseInt(data.speed);
+            document.getElementById('speed-slider').value = speed;
+
+            const dirStr = data.direction;
+            const isFwd = (dirStr === "forward");
+            const dirBtn = document.getElementById('dir-btn');
+            dirBtn.innerText = isFwd ? "FWD" : "REV";
+            dirBtn.disabled = speed != 0;
 
             // Sync Functions
             if (data.functions) {
@@ -273,6 +339,12 @@ function sendAction(action, value, index) {
         if (!r.ok) console.error("Control failed");
         else pollStatus();
     });
+}
+
+function toggleDir() {
+    const btn = document.getElementById('dir-btn');
+    const currentFwd = (btn.innerText === "FWD");
+    sendAction('set_direction', !currentFwd);
 }
 
 function setThrottle(val) {
@@ -321,7 +393,26 @@ function showTab(tabId) {
     if (tabEl) tabEl.classList.add('active');
 
     currentTab = tabId;
+
+    // Specific logic per tab
+    if (tabId === 'logs') {
+        if (!logInterval) {
+            pollLogs(); // Immediate fetch
+            logInterval = setInterval(pollLogs, 1000);
+        }
+    } else {
+        if (logInterval) {
+            clearInterval(logInterval);
+            logInterval = null;
+        }
+    }
+
+    if (tabId === 'cvs') renderCVTable();
 }
+
+///////////////////////////////////////////
+// Uploads
+///////////////////////////////////////////
 
 async function handleFileUpload(input_id, endpoint) {
     const input = document.getElementById(input_id);
@@ -363,6 +454,105 @@ async function handleProjectUpload(e) {
 async function handleFirmwareUpload(e) {
     e.preventDefault();
     await handleFileUpload('firmware-file-input', '/api/firmware/upload');
+}
+
+///////////////////////////////////////////
+// CV Management
+///////////////////////////////////////////
+
+function renderCVTable() {
+    const tbody = document.querySelector('#cv-table tbody');
+    if (!tbody) return;
+
+    // Capture existing values
+    const existingValues = {};
+    document.querySelectorAll('[id^="cv-val-"]').forEach(input => {
+        existingValues[input.id.replace('cv-val-', '')] = input.value;
+    });
+
+    tbody.innerHTML = '';
+
+    // Sort CVs by number
+    trackableCVS.sort((a, b) => a.cv - b.cv);
+
+    trackableCVS.forEach(item => {
+        const tr = document.createElement('tr');
+        const val = existingValues[item.cv] || '';
+        tr.innerHTML = `
+            <td>${item.cv}</td>
+            <td><b>${item.name || 'Custom'}</b></td>
+            <td><small>${item.desc || '-'}</small></td>
+            <td><input type="number" id="cv-val-${item.cv}" style="width:60px" value="${val}" placeholder="?"></td>
+            <td>
+                <button class="btn small-dark" onclick="writeCV(${item.cv})">Save</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    cvListRendered = true;
+}
+
+async function loadAllCVs() {
+    for (const item of trackableCVS) {
+        await readCV(item.cv);
+    }
+}
+
+function readCV(cv) {
+    return fetch(`/api/cv/read`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ cv: cv })
+    })
+    .then(r => r.json())
+    .then(data => {
+        // If this CV isn't in our list, add it
+        if (!trackableCVS.find(c => c.cv === cv)) {
+            trackableCVS.push({cv: cv, name: "Custom", desc: "User added CV"});
+            renderCVTable();
+        }
+        const input = document.getElementById(`cv-val-${cv}`);
+        if (input) input.value = data.value;
+
+        // Also update custom fields if they match
+        if (cv === parseInt(document.getElementById('custom-cv').value)) {
+             document.getElementById('custom-val').value = data.value;
+        }
+    });
+}
+
+function writeCV(cv) {
+    const input = document.getElementById(`cv-val-${cv}`);
+    if (!input || input.value === '') return;
+    doWriteCV(cv, parseInt(input.value));
+}
+
+function doWriteCV(cv, val) {
+    fetch(`/api/cv/write`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ cv: cv, value: val })
+    })
+    .then(r => {
+        if (r.ok) {
+            if (!trackableCVS.find(c => c.cv === cv)) {
+                trackableCVS.push({cv: cv, name: "Custom", desc: "User added CV"});
+                renderCVTable();
+            }
+            alert(`CV${cv} Saved`);
+        } else alert("Write Failed");
+    });
+}
+
+function rwCustomCV(mode) {
+    const cv = parseInt(document.getElementById('custom-cv').value);
+    if (!cv) return;
+    if (mode === 'read') readCV(cv);
+    else {
+        const val = parseInt(document.getElementById('custom-val').value);
+        if (isNaN(val)) return;
+        doWriteCV(cv, val);
+    }
 }
 
 </script>

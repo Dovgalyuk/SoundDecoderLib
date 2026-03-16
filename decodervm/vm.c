@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "vm.h"
@@ -6,6 +5,7 @@
 #include "schedule.h"
 #include "audio.h"
 #include "utils.h"
+#include "cv.h"
 
 #define INSTRUCTIONS_PER_TICK 100
 
@@ -16,16 +16,18 @@ static bool trigger_set;
 void vm_set_var(uint16_t addr, uint8_t val)
 {
     addr -= VAR_GLOBAL_START;
-    assert(addr < VAR_GLOBAL_SIZE);
-    memory[addr] = val;
+    if (addr < VAR_GLOBAL_SIZE) {
+        memory[addr] = val;
+    }
 }
 
 uint8_t vm_get_var(uint16_t addr)
 {
     addr -= VAR_GLOBAL_START;
-    assert(addr < VAR_GLOBAL_SIZE);
-    uint8_t res = memory[addr];
-    return res;
+    if (addr >= VAR_GLOBAL_SIZE) {
+        return 0;
+    }
+    return memory[addr];
 }
 
 bool vm_load_slot(FILE *f)
@@ -34,27 +36,34 @@ bool vm_load_slot(FILE *f)
     char *name = NULL;
     Schedule *sch = NULL;
     if (!file_read_uint8(f, &slot)) {
+        printf("error %d\n", __LINE__);
         goto error;
     }
     if (slot >= VM_SLOTS || slots[slot].schedule) {
+        printf("error %d\n", __LINE__);
         goto error;
     }
     if (!file_read_string(f, &name)) {
+        printf("error %d\n", __LINE__);
         goto error;
     }
     uint8_t volume;
     if (!file_read_uint8(f, &volume)) {
+        printf("error %d\n", __LINE__);
         goto error;
     }
     uint32_t init, length;
     if (!file_read_uint32(f, &init)) {
+        printf("error %d\n", __LINE__);
         goto error;
     }
     if (!file_read_uint32(f, &length)) {
+        printf("error %d\n", __LINE__);
         goto error;
     }
     sch = malloc(sizeof(Schedule) + length);
     if (!sch) {
+        printf("error %d\n", __LINE__);
         goto error;
     }
     sch->name = name;
@@ -62,6 +71,7 @@ bool vm_load_slot(FILE *f)
     sch->start = init;
     sch->script_size = length;
     if (fread(sch->script, 1, length, f) != length) {
+        printf("error %d\n", __LINE__);
         goto error;
     }
     //printf("Loading slot %d (%s) with %d bytes\n", slot, sch->name, sch->script_size);
@@ -75,26 +85,34 @@ error:
 
 void vm_set_slot_var(uint8_t id, uint16_t addr, uint8_t val)
 {
-    assert(id < VM_SLOTS);
-    slot_set_var(&slots[id], addr, val);
+    if (id < VM_SLOTS) {
+        slot_set_var(&slots[id], addr, val);
+    }
 }
 
 uint8_t vm_get_slot_var(uint8_t id, uint16_t addr)
 {
-    assert(id < VM_SLOTS);
+    if (id >= VM_SLOTS) {
+        return 0;
+    }
     return slot_get_var(&slots[id], addr);
 }
 
 void vm_tick(uint32_t t)
 {
-    static uint32_t trigger_time;
+    static int32_t trigger_time;
     /* Set trigger */
     //trigger_time += t;
     // project mogul
     // uint32_t period = 950 - vm_get_var(V_SPEED) * 3;
     // project mogul2
-    uint32_t period = (45000 - vm_get_var(V_SPEED) * 109) / 100;
-    //period *= INSTRUCTIONS_PER_TICK / 10;
+    int32_t period = cv_read(CV_CHUFF_PERIOD) * 10
+                     - vm_get_var(V_SPEED) * cv_read(CV_CHUFF_SPEEDUP) / 10;
+    int32_t min = cv_read(CV_CHUFF_MIN_PERIOD);
+    if (period < min) {
+        /* For highest speed need not to be prototypical */
+        period = min;
+    }
     trigger_time += t;
     if (trigger_time >= period) {
         trigger_time -= period;
@@ -131,12 +149,7 @@ void vm_tick(uint32_t t)
         vm_set_var(F_TRIGGER, trigger_set);
 
         for (int i = 0 ; i < VM_SLOTS ; ++i) {
-            if (!slots[i].schedule) {
-                continue;
-            }
-            if (slot_step(&slots[i])) {
-                break;
-            }
+            slot_step(&slots[i]);
         }
     }
 }
@@ -172,4 +185,19 @@ void vm_reset(void)
     for (int i = 0 ; i < VM_SLOTS ; ++i) {
         slot_reset(&slots[i]);
     }
+}
+
+void vm_set_function_key(uint8_t f, bool v)
+{
+    if (f < VM_FUNCTION_KEYS) {
+        vm_set_var(F_KEY0 + f, v);
+    }
+}
+
+bool vm_get_function_key(uint8_t f)
+{
+    if (f < VM_FUNCTION_KEYS) {
+        return vm_get_var(F_KEY0 + f);
+    }
+    return false;
 }

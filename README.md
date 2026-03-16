@@ -1,6 +1,14 @@
-# SoundDecoderLib
-Library for programming the sounds for the model trains
+# Maple RailRoad Sound Decoder
 
+WiFi controller, sound decoder, and software for model trains.
+
+Project includes library for programming the sounds with set of state machines.
+
+Includes the following hardware components:
+* ESP32 CPU with embedded WiFi module
+* Flash IC for storing sound projects (embedded flash also supported)
+* Motor driver
+* I2S audio power amplifier (MAX98357)
 
 # Links
 

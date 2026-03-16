@@ -15,7 +15,10 @@ typedef struct Slot {
     uint32_t pc;
     uint8_t sp;
     uint8_t nextsp;
+    /* Number of current sample (0-1) */
+    uint8_t subslot;
     bool flag;
+    bool error;
     /* 16-bit to allow signed values */
     int16_t stack[SLOT_STACK_SIZE];
     uint8_t locals[VAR_LOCAL_SIZE];
@@ -26,11 +29,11 @@ void slot_init(Slot *slot, Schedule *schedule);
 void slot_clear(Slot *slot);
 void slot_reset(Slot *slot);
 /* Returns true if wait instruction was executed */
-bool slot_step(Slot *slot);
+void slot_step(Slot *slot);
 void slot_set_var(Slot *slot, uint16_t addr, uint8_t val);
 uint8_t slot_get_var(Slot *slot, uint16_t addr);
 
-void slot_started_sound(Slot *slot);
-void slot_finished_sound(Slot *slot);
+void slot_started_sound(Slot *slot, uint8_t subslot);
+void slot_finished_sound(Slot *slot, uint8_t subslot);
 
 #endif

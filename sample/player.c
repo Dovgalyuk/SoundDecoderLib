@@ -34,11 +34,11 @@ void player_clear(void)
     fclose(wav);
 }
 
-void player_abort_slot(Slot *slot)
+void player_abort_slot(Slot *slot, uint8_t subslot)
 {
 }
 
-void play_slot_sound(Slot *slot, uint16_t id, uint8_t priority,
+void play_slot_sound(Slot *slot, uint8_t subslot, uint16_t id, uint8_t priority,
                      uint8_t volmin, uint8_t volmax, uint8_t delay)
 {
     printf("play %d speed %d\n", id, engine_get_speed());

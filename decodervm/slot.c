@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -30,34 +29,40 @@ static uint32_t read_dword(const Schedule *sch, uint32_t *pc)
 uint8_t slot_get_var(Slot *slot, uint16_t addr)
 {
     addr -= VAR_LOCAL_START;
-    assert(addr < VAR_LOCAL_SIZE);
+    if (addr >= VAR_LOCAL_SIZE) {
+        return 0;
+    }
     return slot->locals[addr];
 }
 
 void slot_set_var(Slot *slot, uint16_t addr, uint8_t val)
 {
     addr -= VAR_LOCAL_START;
-    assert(addr < VAR_LOCAL_SIZE);
-    slot->locals[addr] = val;
+    if (addr < VAR_LOCAL_SIZE) {
+        slot->locals[addr] = val;
+    }
 }
 
 static int16_t slot_read_mem(Slot *slot, uint16_t addr)
 {
-    assert(addr < VAR_END);
+    if (addr >= VAR_END) {
+        return 0;
+    }
     if (addr - VAR_LOCAL_START < VAR_LOCAL_SIZE) {
         return slot_get_var(slot, addr);
-    } else {
-        uint8_t v = vm_get_var(addr);
-        if (addr >= VAR_GLOBAL_SIGNED_START) {
-            return (int8_t)v;
-        }
-        return v;
     }
+    uint8_t v = vm_get_var(addr);
+    if (addr >= VAR_GLOBAL_SIGNED_START) {
+        return (int8_t)v;
+    }
+    return v;
 }
 
 static void slot_write_mem(Slot *slot, uint16_t addr, uint8_t val)
 {
-    assert(addr < VAR_END);
+    if (addr >= VAR_END) {
+        return;
+    }
     if (addr - VAR_LOCAL_START < VAR_LOCAL_SIZE) {
         slot_set_var(slot, addr, val);
     } else {
@@ -65,11 +70,20 @@ static void slot_write_mem(Slot *slot, uint16_t addr, uint8_t val)
     }
 }
 
+static void slot_set_pc(Slot *slot, uint32_t pc)
+{
+    if (!slot->schedule || pc >= slot->schedule->script_size) {
+        slot->error = true;
+        return;
+    }
+    slot->pc = pc;
+}
+
 static void slot_call_state(Slot *slot, uint32_t addr)
 {
     slot->nextstack[slot->nextsp] = slot->pc;
     slot->nextsp = (slot->nextsp + 1) % NEXT_STACK_SIZE;
-    slot->pc = addr;
+    slot_set_pc(slot, addr);
 }
 
 static void slot_next_state(Slot *slot, uint32_t addr)
@@ -78,7 +92,7 @@ static void slot_next_state(Slot *slot, uint32_t addr)
     slot_call_state(slot, addr);
     /* Stop sound if state switch was caused by immediate transition */
     if (slot_get_var(slot, F_PLAYING)) {
-        player_abort_slot(slot);
+        player_abort_slot(slot, slot->subslot);
     }
     /* Reset drive-related variables */
     slot_set_var(slot, F_DRIVELOCK, 0);
@@ -90,20 +104,32 @@ static void slot_play(Slot *slot, uint16_t id, uint8_t priority,
     uint8_t volmin, uint8_t volmax, uint8_t delay)
 {
     if (slot_get_var(slot, F_PLAYING)) {
-        player_abort_slot(slot);
+        player_abort_slot(slot, slot->subslot);
     }
-    play_slot_sound(slot, id, priority, volmin, volmax, delay);
+    play_slot_sound(slot, slot->subslot, id, priority, volmin, volmax, delay);
 }
 
-void slot_started_sound(Slot *slot)
+void slot_started_sound(Slot *slot, uint8_t subslot)
 {
-    slot_set_var(slot, F_PLAYING, 1);
+    uint8_t var = subslot == slot->subslot ? F_PLAYING : F_PLAYING2;
+    slot_set_var(slot, var, 1);
+
     vm_reset_trigger();
 }
 
-void slot_finished_sound(Slot *slot)
+void slot_finished_sound(Slot *slot, uint8_t subslot)
 {
-    slot_set_var(slot, F_PLAYING, 0);
+    uint8_t var = subslot == slot->subslot ? F_PLAYING : F_PLAYING2;
+    slot_set_var(slot, var, 0);
+}
+
+void slot_switch(Slot *slot)
+{
+    uint8_t pl1 = slot_get_var(slot, F_PLAYING);
+    uint8_t pl2 = slot_get_var(slot, F_PLAYING2);
+    slot_set_var(slot, F_PLAYING, pl2);
+    slot_set_var(slot, F_PLAYING2, pl1);
+    slot->subslot = 1 - slot->subslot;
 }
 
 void slot_init(Slot *slot, Schedule *schedule)
@@ -126,17 +152,19 @@ void slot_reset(Slot *slot)
     if (!slot->schedule) {
         return;
     }
+    slot->error = false;
     slot->sp = 0;
     slot->flag = 0;
     slot->nextsp = 0;
+    slot->subslot = 0;
     memset(slot->locals, 0, sizeof(slot->locals));
     slot->pc = slot->schedule->start;
 }
 
-bool slot_step(Slot *slot)
+void slot_step(Slot *slot)
 {
-    if (!slot->schedule) {
-        return true;
+    if (!slot->schedule || slot->error) {
+        return;
     }
     int32_t first = slot->pc;
     uint8_t op = slot->schedule->script[slot->pc++];
@@ -218,9 +246,6 @@ bool slot_step(Slot *slot)
         DPRINTF("NEXT %d\n", (int)arg32);
         slot_next_state(slot, arg32);
         break;
-    case I_WAIT:
-        DPRINTF("WAIT\n");
-        return true;
     case I_PLAY:
         {
             uint16_t sample = read_word(slot->schedule, &slot->pc);
@@ -294,7 +319,7 @@ bool slot_step(Slot *slot)
     case I_SWITCH:
         {
             DPRINTF("SWITCH\n");
-            // TODO: change play channel
+            slot_switch(slot);
         }
         break;
     case I_RET:
@@ -313,5 +338,4 @@ bool slot_step(Slot *slot)
         DPRINTF("ERROR instr\n");
         break;
     }
-    return false;
 }

@@ -1,15 +1,50 @@
+#include <stdlib.h>
 #include "cv.h"
+#include "utils.h"
 
 typedef struct CV {
     uint8_t value;
     const char *name;
     const char *description;
+    const int min;
+    const int max;
 } CV;
 
 static CV cv[CV_MAX + 1] = {
-    [CV_VSTART] = {128, "Start motor voltage", "0-255 = 0V-VCC"},
-    [CV_ACCELERATION] = {2, "Acceleration", "0 for acceleration without delay"},
-    [CV_DECELERATION] = {2, "Deceleration", "0 for slowing down without delay"},
+    [CV_VSTART] = {130, "Start motor voltage", "0-255 = 0V-VCC", 0, 255},
+    [CV_ACCELERATION] = {10, "Acceleration", "0 for acceleration without delay", 0, 255},
+    [CV_DECELERATION] = {10, "Deceleration", "0 for slowing down without delay", 0, 255},
+    [CV_CHUFF_PERIOD] = {50, "Chuff period", "Steam chuffs period at speed 1 in 10s of milliseconds", 30, 255},
+    [CV_CHUFF_SPEEDUP] = {60, "Chuff speedup", "Chuff speedup factor", 0, 255},
+    [CV_CHUFF_MIN_PERIOD] = {150, "Minimum chuff period", "Chuff period could not be less at highest speeds", 0, 255},
+    [CV_SPEED_TABLE1] = {1, "Speed table step 1", "1-255", 1, 255},
+    [CV_SPEED_TABLE2] = {2, "Speed table step 2", "1-255", 1, 255},
+    [CV_SPEED_TABLE3] = {4, "Speed table step 3", "1-255", 1, 255},
+    [CV_SPEED_TABLE4] = {7, "Speed table step 4", "1-255", 1, 255},
+    [CV_SPEED_TABLE5] = {10, "Speed table step 5", "1-255", 1, 255},
+    [CV_SPEED_TABLE6] = {14, "Speed table step 6", "1-255", 1, 255},
+    [CV_SPEED_TABLE7] = {18, "Speed table step 7", "1-255", 1, 255},
+    [CV_SPEED_TABLE8] = {23, "Speed table step 8", "1-255", 1, 255},
+    [CV_SPEED_TABLE9] = {28, "Speed table step 9", "1-255", 1, 255},
+    [CV_SPEED_TABLE10] = {34, "Speed table step 10", "1-255", 1, 255},
+    [CV_SPEED_TABLE11] = {40, "Speed table step 11", "1-255", 1, 255},
+    [CV_SPEED_TABLE12] = {47, "Speed table step 12", "1-255", 1, 255},
+    [CV_SPEED_TABLE13] = {54, "Speed table step 13", "1-255", 1, 255},
+    [CV_SPEED_TABLE14] = {62, "Speed table step 14", "1-255", 1, 255},
+    [CV_SPEED_TABLE15] = {70, "Speed table step 15", "1-255", 1, 255},
+    [CV_SPEED_TABLE16] = {79, "Speed table step 16", "1-255", 1, 255},
+    [CV_SPEED_TABLE17] = {88, "Speed table step 17", "1-255", 1, 255},
+    [CV_SPEED_TABLE18] = {98, "Speed table step 18", "1-255", 1, 255},
+    [CV_SPEED_TABLE19] = {108, "Speed table step 19", "1-255", 1, 255},
+    [CV_SPEED_TABLE20] = {120, "Speed table step 20", "1-255", 1, 255},
+    [CV_SPEED_TABLE21] = {133, "Speed table step 21", "1-255", 1, 255},
+    [CV_SPEED_TABLE22] = {147, "Speed table step 22", "1-255", 1, 255},
+    [CV_SPEED_TABLE23] = {162, "Speed table step 23", "1-255", 1, 255},
+    [CV_SPEED_TABLE24] = {178, "Speed table step 24", "1-255", 1, 255},
+    [CV_SPEED_TABLE25] = {195, "Speed table step 25", "1-255", 1, 255},
+    [CV_SPEED_TABLE26] = {213, "Speed table step 26", "1-255", 1, 255},
+    [CV_SPEED_TABLE27] = {233, "Speed table step 27", "1-255", 1, 255},
+    [CV_SPEED_TABLE28] = {255, "Speed table step 28", "1-255", 1, 255},
 };
 
 uint8_t cv_read(uint16_t id)
@@ -22,8 +57,44 @@ uint8_t cv_read(uint16_t id)
 
 void cv_write(uint16_t id, uint8_t value)
 {
-    if (id >= CV_MAX) {
+    if (id >= CV_MAX || value < cv[id].min || value > cv[id].max) {
         return;
     }
     cv[id].value = value;
+}
+
+const char *cv_name(uint16_t id)
+{
+    if (id >= CV_MAX) {
+        return NULL;
+    }
+    return cv[id].name;
+}
+
+const char *cv_description(uint16_t id)
+{
+    if (id >= CV_MAX) {
+        return NULL;
+    }
+    return cv[id].description;
+}
+
+bool cv_load(FILE *f)
+{
+    uint16_t count;
+    if (!file_read_uint16(f, &count)) {
+        return false;
+    }
+    while (count--) {
+        uint16_t id;
+        if (!file_read_uint16(f, &id)) {
+            return false;
+        }
+        uint8_t value;
+        if (!file_read_uint8(f, &value)) {
+            return false;
+        }
+        cv_write(id, value);
+    }
+    return true;
 }

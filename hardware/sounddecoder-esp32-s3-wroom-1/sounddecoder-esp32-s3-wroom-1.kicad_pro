@@ -249,7 +249,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "sounddecoder-esp32-wroom-32d.kicad_pro",
+    "filename": "sounddecoder-esp32-s3-wroom-1.kicad_pro",
     "version": 3
   },
   "net_settings": {
