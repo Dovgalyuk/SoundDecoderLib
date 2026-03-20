@@ -83,7 +83,9 @@ static void player_clear_channel(SoundChannel *ch)
         return;
     }
     wave_close(ch->file);
-    slot_finished_sound(ch->slot, ch->subslot);
+    if (!ch->aborted) {
+        slot_finished_sound(ch->slot, ch->subslot);
+    }
     ch->file = NULL;
     ch->aborted = false;
 }
@@ -269,7 +271,7 @@ static SoundChannel *player_acquire_channel(Slot *slot, uint8_t subslot, uint8_t
 void play_slot_sound(Slot *slot, uint8_t subslot, uint16_t id, uint8_t priority,
                      uint8_t volmin, uint8_t volmax, uint8_t delay)
 {
-    ESP_LOGI(TAG, "PLAY %d speed=%d", id, vm_get_var(V_SPEED));
+    ESP_LOGI(TAG, "PLAY %d in %p %d", id, slot, subslot);
     SoundChannel *ch = player_acquire_channel(slot, subslot, priority);
     if (!ch) {
         printf("No available slots\n");

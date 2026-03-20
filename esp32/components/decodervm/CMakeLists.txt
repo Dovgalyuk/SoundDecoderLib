@@ -1,4 +1,4 @@
-set(srcs "decodervm.c" "../../../decodervm/vm.c" "../../../decodervm/slot.c"
+set(srcs "../../../decodervm/vm.c" "../../../decodervm/slot.c"
     "../../../decodervm/engine.c" "../../../decodervm/utils.c"
     "../../../decodervm/project.c" "../../../decodervm/cv.c"
     "../../../decodervm/logger.c")

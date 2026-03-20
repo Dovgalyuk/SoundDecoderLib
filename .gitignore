@@ -3,6 +3,7 @@ sdkconfig
 sdkconfig.old
 todo.txt
 *-backups
+fp-info-cache
 
 # Prerequisites
 *.d

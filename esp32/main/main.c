@@ -21,6 +21,7 @@
 #include "audio.h"
 #include "engine.h"
 #include "project.h"
+#include "cv.h"
 
 #define TAG "main"
 
@@ -36,6 +37,7 @@ static void vm_task(void *args)
         uint64_t cur_clock = clock_read_ms();
         uint32_t t = cur_clock - last_clock;
         last_clock = cur_clock;
+        project_tick(t);
         engine_tick(t);
         vm_tick(t);
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -69,11 +71,14 @@ void app_main(void)
 
     printf("Free heap size: %" PRIu32 " bytes\n", esp_get_free_heap_size());
 
+    /* Init default CVs at start */
+    cv_init();
     wifi_init();
     web_init();
     storage_init();
-    vm_init();
     project_open();
+    /* Load CVs after opening the project */
+    cv_storage_init();
     player_init();
     engine_init();
 

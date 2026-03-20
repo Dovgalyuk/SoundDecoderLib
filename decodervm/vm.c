@@ -107,7 +107,7 @@ void vm_tick(uint32_t t)
     // uint32_t period = 950 - vm_get_var(V_SPEED) * 3;
     // project mogul2
     int32_t period = cv_read(CV_CHUFF_PERIOD) * 10
-                     - vm_get_var(V_SPEED) * cv_read(CV_CHUFF_SPEEDUP) / 10;
+                     - (int32_t)vm_get_var(V_SPEED) * cv_read(CV_CHUFF_SPEEDUP) / 5;
     int32_t min = cv_read(CV_CHUFF_MIN_PERIOD);
     if (period < min) {
         /* For highest speed need not to be prototypical */

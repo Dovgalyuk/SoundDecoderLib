@@ -2,21 +2,22 @@
 #include "cv.h"
 #include "utils.h"
 
-typedef struct CV {
-    uint8_t value;
+typedef struct CVDesc {
+    const uint8_t default_value;
     const char *name;
     const char *description;
-    const int min;
-    const int max;
-} CV;
+    const uint8_t min;
+    const uint8_t max;
+} CVDesc;
 
-static CV cv[CV_MAX + 1] = {
-    [CV_VSTART] = {130, "Start motor voltage", "0-255 = 0V-VCC", 0, 255},
+static const CVDesc cv_desc[CV_MAX + 1] = {
+    [CV_VSTART] = {130, "Start motor voltage", "Start motor voltage for forward movement 255=VCC", 0, 255},
     [CV_ACCELERATION] = {10, "Acceleration", "0 for acceleration without delay", 0, 255},
     [CV_DECELERATION] = {10, "Deceleration", "0 for slowing down without delay", 0, 255},
-    [CV_CHUFF_PERIOD] = {50, "Chuff period", "Steam chuffs period at speed 1 in 10s of milliseconds", 30, 255},
-    [CV_CHUFF_SPEEDUP] = {60, "Chuff speedup", "Chuff speedup factor", 0, 255},
+    [CV_CHUFF_PERIOD] = {55, "Chuff period", "Steam chuffs period at speed 1 in 10s of milliseconds", 30, 255},
+    [CV_CHUFF_SPEEDUP] = {180, "Chuff speedup", "Chuff speedup factor", 0, 255},
     [CV_CHUFF_MIN_PERIOD] = {150, "Minimum chuff period", "Chuff period could not be less at highest speeds", 0, 255},
+    [CV_REVERSE_VSTART] = {144, "Reverse start motor voltage", "Start motor voltage for reverse movement 255=VCC", 0, 255},
     [CV_SPEED_TABLE1] = {1, "Speed table step 1", "1-255", 1, 255},
     [CV_SPEED_TABLE2] = {2, "Speed table step 2", "1-255", 1, 255},
     [CV_SPEED_TABLE3] = {4, "Speed table step 3", "1-255", 1, 255},
@@ -47,36 +48,46 @@ static CV cv[CV_MAX + 1] = {
     [CV_SPEED_TABLE28] = {255, "Speed table step 28", "1-255", 1, 255},
 };
 
-uint8_t cv_read(uint16_t id)
+static uint8_t cv[CV_MAX + 1];
+
+
+void cv_init()
+{
+    for (int i = 0 ; i <= CV_MAX ; ++i) {
+        cv_set(i, cv_desc[i].default_value);
+    }
+}
+
+uint8_t cv_read(cv_addr_t id)
 {
     if (id >= CV_MAX) {
         return 0;
     }
-    return cv[id].value;
+    return cv[id];
 }
 
-void cv_write(uint16_t id, uint8_t value)
+void cv_set(cv_addr_t id, uint8_t value)
 {
-    if (id >= CV_MAX || value < cv[id].min || value > cv[id].max) {
+    if (id >= CV_MAX || value < cv_desc[id].min || value > cv_desc[id].max) {
         return;
     }
-    cv[id].value = value;
+    cv[id] = value;
 }
 
-const char *cv_name(uint16_t id)
+const char *cv_name(cv_addr_t id)
 {
     if (id >= CV_MAX) {
         return NULL;
     }
-    return cv[id].name;
+    return cv_desc[id].name;
 }
 
-const char *cv_description(uint16_t id)
+const char *cv_description(cv_addr_t id)
 {
     if (id >= CV_MAX) {
         return NULL;
     }
-    return cv[id].description;
+    return cv_desc[id].description;
 }
 
 bool cv_load(FILE *f)
@@ -86,7 +97,7 @@ bool cv_load(FILE *f)
         return false;
     }
     while (count--) {
-        uint16_t id;
+        cv_addr_t id;
         if (!file_read_uint16(f, &id)) {
             return false;
         }
@@ -94,7 +105,7 @@ bool cv_load(FILE *f)
         if (!file_read_uint8(f, &value)) {
             return false;
         }
-        cv_write(id, value);
+        cv_set(id, value);
     }
     return true;
 }

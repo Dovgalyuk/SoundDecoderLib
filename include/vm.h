@@ -13,7 +13,6 @@ typedef struct Slot Slot;
 typedef struct Schedule Schedule;
 
 /* Setup required hardware features (e.g., timers) */
-void vm_init(void);
 void vm_clear(void);
 void vm_reset(void);
 bool vm_load_slot(FILE *f);

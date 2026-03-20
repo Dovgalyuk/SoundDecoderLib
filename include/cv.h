@@ -14,6 +14,7 @@
 #define CV_CHUFF_PERIOD         47
 #define CV_CHUFF_SPEEDUP        48
 #define CV_CHUFF_MIN_PERIOD     49
+#define CV_REVERSE_VSTART       50
 // #define CV_SWITCH               49
 // #define CV_SOUND_VOLUME         63
 
@@ -50,10 +51,16 @@
 
 #define CV_MAX                  255
 
-uint8_t cv_read(uint16_t id);
-void cv_write(uint16_t id, uint8_t value);
-const char *cv_name(uint16_t id);
-const char *cv_description(uint16_t id);
+typedef uint16_t cv_addr_t;
+
+void cv_init(void);
+uint8_t cv_read(cv_addr_t id);
+/* Set CV in RAM */
+void cv_set(cv_addr_t id, uint8_t value);
+/* Set CV in RAM and EEPROM */
+void cv_write(cv_addr_t id, uint8_t value);
+const char *cv_name(cv_addr_t id);
+const char *cv_description(cv_addr_t id);
 bool cv_load(FILE *f);
 
 #endif

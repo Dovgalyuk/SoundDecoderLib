@@ -116,7 +116,6 @@ void project_open(void)
     }
     uint8_t section;
     while (file_read_uint8(f, &section)) {
-        printf("reading %d\n", section);
         if (section == SECTION_INFO) {
             if (!file_read_uint8(f, &project_type)) {
                 goto ret;
@@ -168,6 +167,45 @@ void project_close(void)
     wave_clear();
     free(project_name);
     project_name = NULL;
+}
+
+void project_tick(uint32_t t)
+{
+    /* Reset all functions */
+    for (uint8_t f = 0 ; f < function_count ; ++f) {
+        for (int i = 0 ; i < FUNCTION_MAX_OUT ; ++i) {
+            if (functions[f].logic[i]) {
+                vm_set_var(functions[f].logic[i], 0);
+            }
+            if (functions[f].slots[i]) {
+                vm_set_slot_var(functions[f].slots[i], F_FUNCTION, 0);
+            }
+        }
+    }
+    /* Validate conditions */
+    for (uint8_t f = 0 ; f < function_count ; ++f) {
+        /* Check inputs */
+        bool active = true;
+        for (int i = 0 ; i < FUNCTION_MAX_IN ; ++i) {
+            if (functions[f].inputs[i]) {
+                active &= vm_get_var(functions[f].inputs[i]) != 0;
+            }
+            if (functions[f].not_inputs[i]) {
+                active &= vm_get_var(functions[f].not_inputs[i]) == 0;
+            }
+        }
+        /* Set output */
+        if (active) {
+            for (int i = 0 ; i < FUNCTION_MAX_OUT ; ++i) {
+                if (functions[f].logic[i]) {
+                    vm_set_var(functions[f].logic[i], active);
+                }
+                if (functions[f].slots[i]) {
+                    vm_set_slot_var(functions[f].slots[i], F_FUNCTION, active);
+                }
+            }
+        }
+    }
 }
 
 const char *project_get_name(void)

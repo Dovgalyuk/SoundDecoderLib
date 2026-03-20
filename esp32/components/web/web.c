@@ -199,7 +199,7 @@ static esp_err_t web_cv_write_handler(httpd_req_t *req)
     cJSON *root = cJSON_Parse(scratch);
     cJSON *j_cv = cJSON_GetObjectItem(root, "cv");
     cJSON *val = cJSON_GetObjectItem(root, "value");
-    uint16_t cv = j_cv ? j_cv->valueint : 0;
+    cv_addr_t cv = j_cv ? j_cv->valueint : 0;
     if (!cv || !cv_name(cv)) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Can't find CV id");
         return ESP_FAIL;

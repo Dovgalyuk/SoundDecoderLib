@@ -17,6 +17,7 @@ int main(int argc, char **argv)
 {
     srand(time(NULL));
 
+    cv_init();
     project_open();
     player_init();
 

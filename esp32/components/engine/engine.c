@@ -10,22 +10,14 @@ CV 4	Deceleration Rate
 #include "freertos/task.h"
 #include "driver/ledc.h"
 #include "driver/gpio.h"
-#include "cv.h"
 
+#include "cv.h"
 #include "engine.h"
 #include "vm.h"
 #include "variables.h"
+#include "pins.h"
 
 #define MOTOR_SPEED_MODE     LEDC_LOW_SPEED_MODE
-#if CONFIG_IDF_TARGET_ESP32
-#define MOTOR_OUTPUT_PWM     4
-#define MOTOR_OUTPUT_DIR1    2
-#define MOTOR_OUTPUT_DIR2    15
-#elif CONFIG_IDF_TARGET_ESP32S3
-#define MOTOR_OUTPUT_PWM     5
-#define MOTOR_OUTPUT_DIR1    6
-#define MOTOR_OUTPUT_DIR2    7
-#endif
 #define MOTOR_LEDC_CHANNEL   LEDC_CHANNEL_0
 #define MOTOR_PWM_FREQUENCY  40000
 #define MOTOR_PWM_RESOLUTION LEDC_TIMER_8_BIT
@@ -34,9 +26,13 @@ CV 4	Deceleration Rate
 static void engine_task(void *args)
 {
     while (true) {
+        /* Update speed */
         uint8_t speed = engine_get_speed();
         bool dir = engine_get_direction();
-        uint8_t min = cv_read(CV_VSTART);
+        uint16_t min = cv_read(CV_VSTART);
+        if (!dir) {
+            min = cv_read(CV_REVERSE_VSTART);
+        }
         uint8_t range = 255 - min;
         uint8_t s = 0;
         if (speed) {
@@ -50,6 +46,9 @@ static void engine_task(void *args)
         ledc_set_duty(MOTOR_SPEED_MODE, MOTOR_LEDC_CHANNEL, s);
         ledc_update_duty(MOTOR_SPEED_MODE, MOTOR_LEDC_CHANNEL);
 
+        /* Update smoke */
+
+        /* Wait */
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
