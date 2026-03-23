@@ -12,6 +12,7 @@
 #include "audio.h"
 #include "engine.h"
 #include "project.h"
+#include "cv.h"
 
 int main(int argc, char **argv)
 {
