@@ -6,6 +6,7 @@
 #include "audio.h"
 #include "utils.h"
 #include "cv.h"
+#include "logger.h"
 
 #define INSTRUCTIONS_PER_TICK 100
 
@@ -47,8 +48,12 @@ bool vm_load_slot(FILE *f)
         printf("error %d\n", __LINE__);
         goto error;
     }
-    uint8_t volume;
+    uint8_t volume, flags;
     if (!file_read_uint8(f, &volume)) {
+        printf("error %d\n", __LINE__);
+        goto error;
+    }
+    if (!file_read_uint8(f, &flags)) {
         printf("error %d\n", __LINE__);
         goto error;
     }
@@ -63,11 +68,12 @@ bool vm_load_slot(FILE *f)
     }
     sch = malloc(sizeof(Schedule) + length);
     if (!sch) {
-        printf("error %d\n", __LINE__);
+        printf("Not enough memory while loading slot %d of size %ld\n", slot, length);
         goto error;
     }
     sch->name = name;
     sch->volume = volume;
+    sch->flags = flags;
     sch->start = init;
     sch->script_size = length;
     if (fread(sch->script, 1, length, f) != length) {
@@ -75,6 +81,7 @@ bool vm_load_slot(FILE *f)
         goto error;
     }
     //printf("Loading slot %d (%s) with %d bytes\n", slot, sch->name, sch->script_size);
+    slots[slot].id = slot;
     slot_init(&slots[slot], sch);
     return true;
 error:
@@ -107,7 +114,7 @@ void vm_tick(uint32_t t)
     // uint32_t period = 950 - vm_get_var(V_SPEED) * 3;
     // project mogul2
     int32_t period = cv_read(CV_CHUFF_PERIOD) * 10
-                     - (int32_t)vm_get_var(V_SPEED) * cv_read(CV_CHUFF_SPEEDUP) / 5;
+                     - (int32_t)vm_get_var(V_SPEED) * cv_read(CV_CHUFF_SPEEDUP) / 2;
     int32_t min = cv_read(CV_CHUFF_MIN_PERIOD);
     if (period < min) {
         /* For highest speed need not to be prototypical */
@@ -119,10 +126,24 @@ void vm_tick(uint32_t t)
         trigger_set = true;
     }
 
-    static uint32_t clock_time;
+    static uint32_t clock_time, clock_time_256;
     clock_time += t;
-    while (clock_time >= 256) {
-        clock_time -= 256;
+    clock_time_256 += t;
+    while (clock_time >= 1000) {
+        clock_time -= 1000;
+        /* Decrement timers */
+        for (int i = 0 ; i < VM_SLOTS ; ++i) {
+            if (!slots[i].schedule) {
+                continue;
+            }
+            uint8_t v = slot_get_var(&slots[i], V_TIMER_1S);
+            if (v) {
+                slot_set_var(&slots[i], V_TIMER_1S, v - 1);
+            }
+        }
+    }
+    while (clock_time_256 >= 256) {
+        clock_time_256 -= 256;
         /* Decrement timers */
         for (int i = 0 ; i < VM_SLOTS ; ++i) {
             if (!slots[i].schedule) {

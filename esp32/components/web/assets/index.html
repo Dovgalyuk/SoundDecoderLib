@@ -165,6 +165,7 @@
         <button class="nav-btn" onclick="showTab('cvs')">CVs</button>
         <button class="nav-btn" onclick="showTab('files')">Files</button>
         <button class="nav-btn" onclick="showTab('logs')">Logs</button>
+        <button class="nav-btn" onclick="showTab('system')">System</button>
     </nav>
 
     <main>
@@ -231,10 +232,12 @@
 
         <!-- Logs Tab -->
         <section id="logs" class="tab-content">
-            <div class="log-controls">
-                <button class="btn small" onclick="clearLogs()">Clear View</button>
-            </div>
             <div id="log-viewer" class="terminal"></div>
+        </section>
+
+        <!-- System Tab -->
+        <section id="system" class="tab-content">
+            <div id="system-info" class="terminal"></div>
         </section>
     </main>
 </div>
@@ -325,6 +328,18 @@ function pollStatus() {
         });
 }
 
+function fetchSysinfo() {
+    /*fetch('/api/sysinfo')
+        .then(r => r.json())
+        .then(data => {
+        })
+        .catch(e => {
+            const indicator = document.getElementById('connection-status');
+            indicator.classList.remove('connected');
+            indicator.classList.add('disconnected');
+        });*/
+}
+
 function sendAction(action, value, index) {
     const payload = { action };
     if (value !== undefined) payload.value = value;
@@ -400,6 +415,8 @@ function showTab(tabId) {
             pollLogs(); // Immediate fetch
             logInterval = setInterval(pollLogs, 1000);
         }
+    } else if (tabId === 'system') {
+        fetchSysinfo();
     } else {
         if (logInterval) {
             clearInterval(logInterval);
@@ -554,6 +571,44 @@ function rwCustomCV(mode) {
         doWriteCV(cv, val);
     }
 }
+
+///////////////////////////////////////////
+// Logs
+///////////////////////////////////////////
+
+let clearedTimestamp = 0;
+
+function pollLogs() {
+    fetch('/api/logs')
+        .then(r => r.text())
+        .then(lines => {
+            const viewer = document.getElementById('log-viewer');
+            // const newLines = lines.filter(line => {
+            //     const match = line.match(/^\\[(\d+)\\]/);
+            //     if (match) return parseInt(match[1]) > clearedTimestamp;
+            //     return true;
+            // });
+            //viewer.innerHtml = '<p>' + lines + '</p>';//newLines.join('\n');
+            viewer.innerText = lines;
+            // if (document.getElementById('auto-scroll').checked) {
+            //     viewer.scrollTop = viewer.scrollHeight;
+            // }
+        });
+}
+
+// function clearLogs() {
+//     fetch('/api/logs')
+//         .then(r => r.json())
+//         .then(lines => {
+//             if (lines.length > 0) {
+//                 const lastLine = lines[lines.length - 1];
+//                 const match = lastLine.match(/^\\[(\d+)\\]/);
+//                 if (match) clearedTimestamp = parseInt(match[1]);
+//             }
+//             document.getElementById('log-viewer').innerHTML = '';
+//         });
+// }
+
 
 </script>
 

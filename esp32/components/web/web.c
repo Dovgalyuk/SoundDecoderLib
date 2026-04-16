@@ -20,6 +20,7 @@
 #include "engine.h"
 #include "project.h"
 #include "cv.h"
+#include "logger.h"
 
 static const char *TAG = "http";
 
@@ -110,6 +111,14 @@ static esp_err_t web_status_handler(httpd_req_t *req)
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON formatting error");
         return ESP_FAIL;
     }
+    httpd_resp_sendstr(req, scratch);
+    return ESP_OK;
+}
+
+static esp_err_t web_logs_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "application/json");
+    logger_get_logs(scratch, SCRATCH_BUFSIZE);
     httpd_resp_sendstr(req, scratch);
     return ESP_OK;
 }
@@ -376,6 +385,13 @@ void web_init(void)
         .handler   = web_status_handler,
     };
     httpd_register_uri_handler(server, &status_uri);
+
+    const httpd_uri_t logs_uri = {
+        .uri       = "/api/logs",
+        .method    = HTTP_GET,
+        .handler   = web_logs_handler,
+    };
+    httpd_register_uri_handler(server, &logs_uri);
 
     const httpd_uri_t info_uri = {
         .uri       = "/api/info",

@@ -13,6 +13,7 @@ typedef struct Schedule Schedule;
 typedef struct Slot {
     Schedule *schedule;
     uint32_t pc;
+    uint8_t id;
     uint8_t sp;
     uint8_t nextsp;
     /* Number of current sample (0-1) */

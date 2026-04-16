@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define VM_SLOTS         34
+#define VM_SLOTS         43
 #define VM_SLOT_BRAKE    33
 #define VM_FUNCTION_KEYS 32
 

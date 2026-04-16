@@ -22,6 +22,7 @@
 #include "engine.h"
 #include "project.h"
 #include "cv.h"
+#include "logger.h"
 
 #define TAG "main"
 
@@ -66,10 +67,10 @@ void app_main(void)
         return;
     }
 
-    printf("%" PRIu32 "MB %s flash\n", flash_size / (uint32_t)(1024 * 1024),
+    logger_printf("%" PRIu32 "MB %s flash", flash_size / (uint32_t)(1024 * 1024),
            (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 
-    printf("Free heap size: %" PRIu32 " bytes\n", esp_get_free_heap_size());
+    logger_printf("Free heap size: %" PRIu32 " bytes", esp_get_free_heap_size());
 
     /* Init default CVs at start */
     cv_init();
@@ -82,7 +83,7 @@ void app_main(void)
     player_init();
     engine_init();
 
-    printf("Free heap size after init: %" PRIu32 " bytes\n", esp_get_free_heap_size());
+    logger_printf("Free heap size after init: %" PRIu32 " bytes", esp_get_free_heap_size());
 
     xTaskCreatePinnedToCore(vm_task, "vm_task", 5120, NULL, 5, NULL, 0);
 }

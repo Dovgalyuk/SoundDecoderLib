@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "variables.h"
 #include "cv.h"
+#include "logger.h"
 
 #define SECTION_INFO         1
 #define SECTION_SLOT         2
@@ -111,7 +112,7 @@ void project_open(void)
     if (!file_read_uint8(f, &version)) {
         goto ret;
     }
-    if (version != 1) {
+    if (version != 2) {
         goto ret;
     }
     uint8_t section;

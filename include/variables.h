@@ -17,6 +17,7 @@
 #define F_RESTORE       0x09
 /* Shadow playing flag for switching between two sounds */
 #define F_PLAYING2      0x0a
+#define V_TIMER_1S      0x0b
 #define VAR_LOCAL_SIZE  0x10
 
 #define VAR_GLOBAL_START 0x40

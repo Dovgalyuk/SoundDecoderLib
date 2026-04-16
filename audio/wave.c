@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "audio.h"
 #include "utils.h"
+#include "logger.h"
 
 #define BUFFER_SIZE 4096
 
@@ -47,6 +48,7 @@ WaveFile *wave_open(uint16_t num)
     /* Create and fill WaveFile */
     WaveFile *w = calloc(1, sizeof(WaveFile));
     if (!w) {
+        logger_printf("Wave: Not enough memory");
         return NULL;
     }
     w->info = info;

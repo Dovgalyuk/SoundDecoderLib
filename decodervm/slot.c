@@ -7,6 +7,7 @@
 #include "bytecode.h"
 #include "player.h"
 #include "vm.h"
+#include "logger.h"
 
 #define DEBUG 0
 #define DPRINTF(fmt, ...) \
@@ -159,6 +160,9 @@ void slot_reset(Slot *slot)
     slot->subslot = 0;
     memset(slot->locals, 0, sizeof(slot->locals));
     slot->pc = slot->schedule->start;
+
+    slot_set_var(slot, F_FUNCTION,
+        !!(slot->schedule->flags & SCHEDULE_FLAG_FORCE));
 }
 
 void slot_step(Slot *slot)
