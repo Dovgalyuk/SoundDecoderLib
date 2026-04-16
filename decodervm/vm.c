@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include "vm.h"
 #include "slot.h"
 #include "schedule.h"
@@ -68,7 +69,7 @@ bool vm_load_slot(FILE *f)
     }
     sch = malloc(sizeof(Schedule) + length);
     if (!sch) {
-        printf("Not enough memory while loading slot %d of size %ld\n", slot, length);
+        printf("Not enough memory while loading slot %d of size %"PRId32"\n", slot, length);
         goto error;
     }
     sch->name = name;

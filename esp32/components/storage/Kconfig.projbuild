@@ -12,11 +12,6 @@ menu "Storage Configuration"
         help
             Use internal flash or SD for sound project storage
 
-        config STORAGE_SD
-            bool "Store files on SD"
-            help
-                Use SD for sound project.
-
         config STORAGE_FLASH
             bool "Store files in internal flash"
             help
