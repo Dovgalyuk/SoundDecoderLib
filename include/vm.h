@@ -6,7 +6,6 @@
 #include <stdio.h>
 
 #define VM_SLOTS         43
-#define VM_SLOT_BRAKE    33
 #define VM_FUNCTION_KEYS 32
 
 typedef struct Slot Slot;
@@ -22,6 +21,7 @@ void vm_set_var(uint16_t addr, uint8_t val);
 
 void vm_set_slot_var(uint8_t id, uint16_t addr, uint8_t val);
 uint8_t vm_get_slot_var(uint8_t id, uint16_t addr);
+bool vm_slot_is_brake(uint8_t id);
 
 void vm_tick(uint32_t t);
 bool vm_has_drivelock(void);
@@ -29,6 +29,5 @@ void vm_reset_trigger(void);
 
 void vm_set_function_key(uint8_t f, bool v);
 bool vm_get_function_key(uint8_t f);
-
 
 #endif

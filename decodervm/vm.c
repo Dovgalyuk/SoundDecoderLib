@@ -106,6 +106,12 @@ uint8_t vm_get_slot_var(uint8_t id, uint16_t addr)
     return slot_get_var(&slots[id], addr);
 }
 
+bool vm_slot_is_brake(uint8_t id)
+{
+    return id < VM_SLOTS && slots[id].schedule
+        && (slots[id].schedule->flags & SCHEDULE_FLAG_BRAKE);
+}
+
 void vm_tick(uint32_t t)
 {
     static int32_t trigger_time;
@@ -171,6 +177,14 @@ void vm_tick(uint32_t t)
         vm_set_var(F_TRIGGER, trigger_set);
 
         for (int i = 0 ; i < VM_SLOTS ; ++i) {
+            /* TODO: brake function */
+            if (slots[i].schedule
+                && (slots[i].schedule->flags & SCHEDULE_FLAG_BRAKE)
+                /* Brake script may not check function */
+                && !slot_get_var(&slots[i], F_FUNCTION)) {
+                continue;
+            }
+
             slot_step(&slots[i]);
         }
     }

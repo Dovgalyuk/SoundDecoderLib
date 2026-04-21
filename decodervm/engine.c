@@ -7,9 +7,9 @@
 
 static uint8_t throttle_step;
 static uint8_t speed_step;
-static bool brake;
 /* True for forward */
 static bool direction = true;
+static bool outputs[ENGINE_OUTPUTS];
 
 void engine_set_throttle(uint8_t v)
 {
@@ -51,7 +51,21 @@ void engine_stop(void)
 void engine_brake(void)
 {
     throttle_step = 0;
-    brake = true;
+}
+
+bool engine_get_output(uint8_t id)
+{
+    if (id && id <= ENGINE_OUTPUTS) {
+        return outputs[id - 1];
+    }
+    return false;
+}
+
+void engine_set_output(uint8_t id, bool val)
+{
+    if (id && id <= ENGINE_OUTPUTS) {
+        outputs[id - 1] = val;
+    }
 }
 
 void engine_tick(uint32_t t)
@@ -61,7 +75,6 @@ void engine_tick(uint32_t t)
     vm_set_var(V_SPEED_REQUEST, throttle_step
         ? cv_read(CV_SPEED_TABLE1 + throttle_step - 1)
         : 0);
-    vm_set_slot_var(VM_SLOT_BRAKE, F_FUNCTION, brake);
 
     /* Wait for speed update */
     static uint32_t dt;
@@ -111,9 +124,20 @@ void engine_tick(uint32_t t)
         }
     } else {
         accel = 0;
-        brake = false;
     }
+
     int16_t speed = engine_get_speed();
+
+    /* Calculate brake conditions */
+    bool brake = accel < 0
+        && speed <= cv_read(CV_BRAKE_ON_THRESHOLD)
+        && speed >= cv_read(CV_BRAKE_OFF_THRESHOLD);
+    for (int i = 0 ; i < VM_SLOTS ; ++i) {
+       if (vm_slot_is_brake(i)) {
+            vm_set_slot_var(i, F_FUNCTION, brake);
+       }
+    }
+
     /* update speed, reverse, and acceleration in VM */
     vm_set_var(V_ACCEL, accel);
     /* TODO: figure out the difference between speeds */

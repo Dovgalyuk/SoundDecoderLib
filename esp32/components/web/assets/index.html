@@ -221,11 +221,6 @@
                     <input type="file" id="project-file-input" required accept=".prj">
                     <button type="submit" class="btn primary">Upload</button>
                 </form>
-                <h3>Upload Firmware</h3>
-                <form id="upload-firmware-form">
-                    <input type="file" id="firmware-file-input" required accept=".bin">
-                    <button type="submit" class="btn primary">Upload</button>
-                </form>
                 <div id="upload-status"></div>
             </div>
         </section>
@@ -237,13 +232,23 @@
 
         <!-- System Tab -->
         <section id="system" class="tab-content">
-            <div id="system-info" class="terminal"></div>
+            <h3>Upload Firmware</h3>
+            <form id="upload-firmware-form">
+                <input type="file" id="firmware-file-input" required accept=".bin">
+                <button type="submit" class="btn primary">Upload</button>
+            </form>
+            <div class="button-group" style="margin-top: 10px;">
+                <button id="firmware-status" class="btn primary" onclick="validateFirmware()">Validate</button>
+            </div>
+            <div id="upload-firmware-status"></div>
+            <div id="system-info" style="margin-top: 10px;" class="terminal"></div>
         </section>
     </main>
 </div>
 <script type="text/javascript">
 let currentTab = 'dashboard';
 let logInterval = null;
+let statusInterval = null;
 let function_info = [];
 let cvListRendered = false;
 let trackableCVS = []; // Fetched from backend
@@ -252,10 +257,19 @@ document.addEventListener('DOMContentLoaded', () => {
     showTab('dashboard');
     loadInfo();
     loadCVDefs();
-    statusInterval = setInterval(pollStatus, 1000);
     document.getElementById('upload-project-form').addEventListener('submit', handleProjectUpload);
     document.getElementById('upload-firmware-form').addEventListener('submit', handleFirmwareUpload);
 });
+
+function setStatusInterval(v)
+{
+    if (v) {
+        statusInterval = setInterval(pollStatus, 1000);
+    } else if (statusInterval) {
+        clearInterval(statusInterval);
+        statusInterval = null;
+    }
+}
 
 function renderFunctions() {
     const grid = document.getElementById('func-grid');
@@ -328,22 +342,10 @@ function pollStatus() {
         });
 }
 
-function fetchSysinfo() {
-    /*fetch('/api/sysinfo')
-        .then(r => r.json())
-        .then(data => {
-        })
-        .catch(e => {
-            const indicator = document.getElementById('connection-status');
-            indicator.classList.remove('connected');
-            indicator.classList.add('disconnected');
-        });*/
-}
-
-function sendAction(action, value, index) {
+function sendAction(action, value, index, cb=null) {
     const payload = { action };
-    if (value !== undefined) payload.value = value;
-    if (index !== undefined) payload.index = index;
+    if (value !== undefined && value !== null) payload.value = value;
+    if (index !== undefined && index !== null) payload.index = index;
 
     fetch('/api/control', {
         method: 'POST',
@@ -351,8 +353,14 @@ function sendAction(action, value, index) {
         body: JSON.stringify(payload)
     })
     .then(r => {
-        if (!r.ok) console.error("Control failed");
-        else pollStatus();
+        if (!r.ok) {
+            console.error("Control failed");
+        } else {
+            pollStatus();
+            if (cb) {
+                cb();
+            }
+        }
     });
 }
 
@@ -417,11 +425,18 @@ function showTab(tabId) {
         }
     } else if (tabId === 'system') {
         fetchSysinfo();
-    } else {
+    } else if (tabId === 'dashboard') {
+        setStatusInterval(1000);
+    }
+
+    if (tabId !== 'logs') {
         if (logInterval) {
             clearInterval(logInterval);
             logInterval = null;
         }
+    }
+    if (tabId !== 'dashboard') {
+        setStatusInterval(0);
     }
 
     if (tabId === 'cvs') renderCVTable();
@@ -431,12 +446,12 @@ function showTab(tabId) {
 // Uploads
 ///////////////////////////////////////////
 
-async function handleFileUpload(input_id, endpoint) {
+async function handleFileUpload(input_id, status_id, endpoint) {
     const input = document.getElementById(input_id);
     const files = input.files;
     if (files.length != 1) return;
 
-    const statusDiv = document.getElementById('upload-status');
+    const statusDiv = document.getElementById(status_id);
     statusDiv.innerText = "Starting upload...";
 
     let project = files[0];
@@ -465,12 +480,41 @@ async function handleFileUpload(input_id, endpoint) {
 
 async function handleProjectUpload(e) {
     e.preventDefault();
-    await handleFileUpload('project-file-input', '/api/project/upload');
+    await handleFileUpload('project-file-input', 'upload-status', '/api/project/upload');
 }
 
 async function handleFirmwareUpload(e) {
     e.preventDefault();
-    await handleFileUpload('firmware-file-input', '/api/firmware/upload');
+    await handleFileUpload('firmware-file-input', 'upload-firmware-status', '/api/firmware/upload');
+}
+
+///////////////////////////////////////////
+// System Management
+///////////////////////////////////////////
+
+function fetchSysinfo() {
+    fetch('/api/sysinfo')
+        .then(r => r.json())
+        .then(data => {
+            const status = document.getElementById('firmware-status');
+            var state = false;
+            var name = 'Internal error';
+            if (data.ota_state == 'pending_verify') {
+                name = 'Approve firmware';
+                state = true;
+            } else if (data.ota_state == 'valid') {
+                name = 'Firmware is OK';
+            }
+            status.innerText = name;
+            status.disabled = !state;
+        })
+        .catch(e => {
+            pollStatus();
+        });
+}
+
+function validateFirmware() {
+    sendAction("validate_firmware", null, null, fetchSysinfo);
 }
 
 ///////////////////////////////////////////

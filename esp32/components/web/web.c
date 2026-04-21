@@ -24,7 +24,7 @@
 
 static const char *TAG = "http";
 
-#define MAX_FILE_SIZE   (16*1024*1024)
+#define MAX_FILE_SIZE   (24*1024*1024)
 #define SCRATCH_BUFSIZE 4096
 static char scratch[SCRATCH_BUFSIZE];
 
@@ -86,6 +86,8 @@ static esp_err_t web_control_handler(httpd_req_t *req)
             project_stop();
         } else if (!strcmp(act->valuestring, "brake")) {
             engine_brake();
+        } else if (!strcmp(act->valuestring, "validate_firmware")) {
+            esp_ota_mark_app_valid_cancel_rollback();
         }
     }
     cJSON_Delete(root);
@@ -138,6 +140,38 @@ static esp_err_t web_info_handler(httpd_req_t *req)
             cJSON_AddItemToArray(arr, item);
         }
     }
+    bool ok = cJSON_PrintPreallocated(root, scratch, SCRATCH_BUFSIZE - 10, false);
+    cJSON_Delete(root);
+    if (!ok) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON formatting error");
+        return ESP_FAIL;
+    }
+    httpd_resp_sendstr(req, scratch);
+    return ESP_OK;
+}
+
+static esp_err_t web_sysinfo_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "application/json");
+    cJSON *root = cJSON_CreateObject();
+    /* OTA */
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    esp_ota_img_states_t ota_state;
+    const char *ota_state_name = "invalid";
+    if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
+        switch (ota_state) {
+        case ESP_OTA_IMG_PENDING_VERIFY:
+            ota_state_name = "pending_verify";
+            break;
+        case ESP_OTA_IMG_VALID:
+            ota_state_name = "valid";
+            break;
+        default:
+            break;
+        }
+    }
+    cJSON_AddStringToObject(root, "ota_state", ota_state_name);
+
     bool ok = cJSON_PrintPreallocated(root, scratch, SCRATCH_BUFSIZE - 10, false);
     cJSON_Delete(root);
     if (!ok) {
@@ -350,12 +384,71 @@ error:
     return ESP_FAIL;
 }
 
+static const httpd_uri_t handlers[] = {
+    {
+        .uri       = "/",
+        .method    = HTTP_GET,
+        .handler   = web_index_handler,
+    },
+    {
+        .uri       = "/api/control",
+        .method    = HTTP_POST,
+        .handler   = web_control_handler,
+    },
+    {
+        .uri       = "/api/status",
+        .method    = HTTP_GET,
+        .handler   = web_status_handler,
+    },
+    {
+        .uri       = "/api/logs",
+        .method    = HTTP_GET,
+        .handler   = web_logs_handler,
+    },
+    {
+        .uri       = "/api/info",
+        .method    = HTTP_GET,
+        .handler   = web_info_handler,
+    },
+    {
+        .uri       = "/api/sysinfo",
+        .method    = HTTP_GET,
+        .handler   = web_sysinfo_handler,
+    },
+    {
+        .uri       = "/api/cv/defs",
+        .method    = HTTP_GET,
+        .handler   = web_cv_defs_handler,
+    },
+    {
+        .uri       = "/api/cv/read",
+        .method    = HTTP_POST,
+        .handler   = web_cv_read_handler,
+    },
+    {
+        .uri       = "/api/cv/write",
+        .method    = HTTP_POST,
+        .handler   = web_cv_write_handler,
+    },
+    {
+        .uri       = "/api/project/upload",
+        .method    = HTTP_POST,
+        .handler   = web_project_upload_handler,
+    },
+    {
+        .uri       = "/api/firmware/upload",
+        .method    = HTTP_POST,
+        .handler   = web_firmware_upload_handler,
+    },
+    {}
+};
+
 void web_init(void)
 {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.lru_purge_enable = true;
-    config.max_uri_handlers = 10;
+    config.max_uri_handlers = sizeof(handlers) / sizeof(handlers[0]);
 
     // Start the httpd server
     ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
@@ -364,74 +457,9 @@ void web_init(void)
         return;
     }
 
-    ESP_LOGI(TAG, "Registering URI handlers");
-    const httpd_uri_t index_uri = {
-        .uri       = "/",
-        .method    = HTTP_GET,
-        .handler   = web_index_handler,
-    };
-    httpd_register_uri_handler(server, &index_uri);
-
-    httpd_uri_t control_post_uri = {
-        .uri = "/api/control",
-        .method = HTTP_POST,
-        .handler = web_control_handler,
-    };
-    httpd_register_uri_handler(server, &control_post_uri);
-
-    const httpd_uri_t status_uri = {
-        .uri       = "/api/status",
-        .method    = HTTP_GET,
-        .handler   = web_status_handler,
-    };
-    httpd_register_uri_handler(server, &status_uri);
-
-    const httpd_uri_t logs_uri = {
-        .uri       = "/api/logs",
-        .method    = HTTP_GET,
-        .handler   = web_logs_handler,
-    };
-    httpd_register_uri_handler(server, &logs_uri);
-
-    const httpd_uri_t info_uri = {
-        .uri       = "/api/info",
-        .method    = HTTP_GET,
-        .handler   = web_info_handler,
-    };
-    httpd_register_uri_handler(server, &info_uri);
-
-    const httpd_uri_t cv_defs_uri = {
-        .uri       = "/api/cv/defs",
-        .method    = HTTP_GET,
-        .handler   = web_cv_defs_handler,
-    };
-    httpd_register_uri_handler(server, &cv_defs_uri);
-
-    httpd_uri_t cv_get_uri = {
-        .uri = "/api/cv/read",
-        .method = HTTP_POST,
-        .handler = web_cv_read_handler,
-    };
-    httpd_register_uri_handler(server, &cv_get_uri);
-
-    httpd_uri_t cv_post_uri = {
-        .uri = "/api/cv/write",
-        .method = HTTP_POST,
-        .handler = web_cv_write_handler,
-    };
-    httpd_register_uri_handler(server, &cv_post_uri);
-
-    httpd_uri_t project_upload_post_uri = {
-        .uri = "/api/project/upload",
-        .method = HTTP_POST,
-        .handler = web_project_upload_handler,
-    };
-    httpd_register_uri_handler(server, &project_upload_post_uri);
-
-    httpd_uri_t firmware_upload_post_uri = {
-        .uri = "/api/firmware/upload",
-        .method = HTTP_POST,
-        .handler = web_firmware_upload_handler,
-    };
-    httpd_register_uri_handler(server, &firmware_upload_post_uri);
+    const httpd_uri_t *h = handlers;
+    while (h->uri) {
+        httpd_register_uri_handler(server, h);
+        ++h;
+    }
 }

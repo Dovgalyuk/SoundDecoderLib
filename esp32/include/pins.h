@@ -12,6 +12,10 @@
 #   define MOTOR_INPUT_V        1
 #   define MOTOR_OUTPUT_DIR1    2
 #   define MOTOR_OUTPUT_DIR2    4
+/* Physical outputs */
+#   define PHYS_OUTPUT_SMOKE      47
+#   define PHYS_OUTPUT_FWD_LIGHT  48
+#   define PHYS_OUTPUT_BACK_LIGHT 42
 /* Storage */
 #   define FLASH_SPI_D0         8
 #   define FLASH_SPI_D1         15

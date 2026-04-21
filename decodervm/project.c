@@ -30,6 +30,7 @@ typedef struct Function {
     uint8_t not_inputs[FUNCTION_MAX_IN];
     uint8_t logic[FUNCTION_MAX_OUT];
     uint8_t slots[FUNCTION_MAX_OUT];
+    uint8_t physical[FUNCTION_MAX_OUT];
 } Function;
 
 static uint8_t project_type;
@@ -77,6 +78,9 @@ static bool project_load_function(FILE *f)
     if (!function_load_array(f, FUNCTION_MAX_OUT, functions[function_count - 1].slots)) {
         return false;
     }
+    if (!function_load_array(f, FUNCTION_MAX_OUT, functions[function_count - 1].physical)) {
+        return false;
+    }
     return true;
 }
 
@@ -112,7 +116,7 @@ void project_open(void)
     if (!file_read_uint8(f, &version)) {
         goto ret;
     }
-    if (version != 2) {
+    if (version != 3) {
         goto ret;
     }
     uint8_t section;
@@ -183,6 +187,8 @@ void project_tick(uint32_t t)
             }
         }
     }
+    /* Reset all outputs */
+    bool out[ENGINE_OUTPUTS + 1] = {};
     /* Validate conditions */
     for (uint8_t f = 0 ; f < function_count ; ++f) {
         /* Check inputs */
@@ -205,7 +211,15 @@ void project_tick(uint32_t t)
                     vm_set_slot_var(functions[f].slots[i], F_FUNCTION, active);
                 }
             }
+            for (int i = 0 ; i < FUNCTION_MAX_OUT ; ++i) {
+                if (functions[f].physical[i]) {
+                    out[functions[f].physical[i]] = true;
+                }
+            }
         }
+    }
+    for (int i = 1 ; i <= ENGINE_OUTPUTS ; ++i) {
+        engine_set_output(i, out[i]);
     }
 }
 

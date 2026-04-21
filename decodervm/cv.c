@@ -14,10 +14,12 @@ static const CVDesc cv_desc[CV_MAX + 1] = {
     [CV_VSTART] = {20, "Start motor voltage", "Start motor voltage for forward movement 255=VCC", 0, 255},
     [CV_ACCELERATION] = {10, "Acceleration", "0 for acceleration without delay", 0, 255},
     [CV_DECELERATION] = {10, "Deceleration", "0 for slowing down without delay", 0, 255},
-    [CV_CHUFF_PERIOD] = {110, "Chuff period", "Steam chuffs period at speed 1 in 10s of milliseconds", 30, 255},
+    [CV_CHUFF_PERIOD] = {120, "Chuff period", "Steam chuffs period at speed 1 in 10s of milliseconds", 30, 255},
     [CV_CHUFF_SPEEDUP] = {96, "Chuff speedup", "Chuff speedup factor", 0, 255},
     [CV_CHUFF_MIN_PERIOD] = {150, "Minimum chuff period", "Chuff period could not be less at highest speeds", 0, 255},
     [CV_REVERSE_VSTART] = {20, "Reverse start motor voltage", "Start motor voltage for reverse movement 255=VCC", 0, 255},
+    [CV_BRAKE_ON_THRESHOLD] = {60, "Brake On", "Brake sound swithes on when the speed is smaller or equals than this value", 0, 255},
+    [CV_BRAKE_OFF_THRESHOLD] = {7, "Brake Off", "Brake sound swithes off when the speed is smaller than this value", 0, 255},
     [CV_SPEED_TABLE1] = {1, "Speed table step 1", "1-255", 1, 255},
     [CV_SPEED_TABLE2] = {2, "Speed table step 2", "1-255", 1, 255},
     [CV_SPEED_TABLE3] = {4, "Speed table step 3", "1-255", 1, 255},
@@ -47,6 +49,22 @@ static const CVDesc cv_desc[CV_MAX + 1] = {
     [CV_SPEED_TABLE27] = {233, "Speed table step 27", "1-255", 1, 255},
     [CV_SPEED_TABLE28] = {255, "Speed table step 28", "1-255", 1, 255},
 };
+
+/*
+64 Brake sound threshold «Brake On»
+If the actual loco speed step is smaller than or equals the value indicated
+here, the brake sound is triggered. Compare chapter 13.4.
+60
+
+
+65 Brake sound threshold «Brake
+If the actual loco speed step is smaller than the one indicated here (up to
+Off»
+255), the brake sound will be switched off again. Compare chapter 13.4.
+7
+
+Brake 1-3 Section 10.6
+*/
 
 static uint8_t cv[CV_MAX + 1];
 

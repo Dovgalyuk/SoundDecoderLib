@@ -15,6 +15,8 @@
 #define CV_CHUFF_SPEEDUP        48
 #define CV_CHUFF_MIN_PERIOD     49
 #define CV_REVERSE_VSTART       50
+#define CV_BRAKE_ON_THRESHOLD   51
+#define CV_BRAKE_OFF_THRESHOLD  52
 // #define CV_SWITCH               49
 // #define CV_SOUND_VOLUME         63
 
