@@ -7,6 +7,7 @@
 #include "audio.h"
 #include "utils.h"
 #include "cv.h"
+#include "engine.h"
 #include "logger.h"
 
 #define INSTRUCTIONS_PER_TICK 100
@@ -130,7 +131,9 @@ void vm_tick(uint32_t t)
     trigger_time += t;
     if (trigger_time >= period) {
         trigger_time -= period;
-        trigger_set = true;
+        if (engine_get_speed_step()) {
+            trigger_set = true;
+        }
     }
 
     static uint32_t clock_time, clock_time_256;
@@ -177,11 +180,12 @@ void vm_tick(uint32_t t)
         vm_set_var(F_TRIGGER, trigger_set);
 
         for (int i = 0 ; i < VM_SLOTS ; ++i) {
-            /* TODO: brake function */
+            /* TODO?: brake function */
             if (slots[i].schedule
                 && (slots[i].schedule->flags & SCHEDULE_FLAG_BRAKE)
-                /* Brake script may not check function */
-                && !slot_get_var(&slots[i], F_FUNCTION)) {
+                && (vm_get_var(F_DISABLE_BRAKE)
+                    /* Brake script may not check function */
+                    || !slot_get_var(&slots[i], F_FUNCTION))) {
                 continue;
             }
 
@@ -218,6 +222,7 @@ void vm_clear(void)
 void vm_reset(void)
 {
     trigger_set = false;
+    vm_init_function_keys();
     for (int i = 0 ; i < VM_SLOTS ; ++i) {
         slot_reset(&slots[i]);
     }
@@ -236,4 +241,14 @@ bool vm_get_function_key(uint8_t f)
         return vm_get_var(F_KEY0 + f);
     }
     return false;
+}
+
+void vm_init_function_keys(void)
+{
+    for (int i = 0 ; i < 4 ; ++i) {
+        uint8_t bits = cv_read(CV_FUNC_DEFAULT0 + i);
+        for (int j = 0 ; j < 8 ; ++j, bits >>= 1) {
+            vm_set_function_key(i * 8 + j, bits & 1);
+        }
+    }
 }

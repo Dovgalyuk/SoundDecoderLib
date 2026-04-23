@@ -11,12 +11,13 @@
 #include "cv.h"
 #include "logger.h"
 
-#define SECTION_INFO         1
-#define SECTION_SLOT         2
-#define SECTION_WAVE         3
-#define SECTION_FUNCTION     4
-#define SECTION_CV           5
-#define SECTION_FUNCTION_KEY 6
+#define SECTION_INFO            1
+#define SECTION_SLOT            2
+#define SECTION_WAVE            3
+#define SECTION_FUNCTION        4
+#define SECTION_CV              5
+#define SECTION_FUNCTION_KEY    6
+#define SECTION_PHYSICAL_OUTPUT 7
 
 #define PROJECT_FUNCTIONS 96
 
@@ -99,6 +100,22 @@ static bool project_load_function_key(FILE *f)
     return true;
 }
 
+static bool project_load_physical_output(FILE *f)
+{
+    uint8_t num;
+    if (!file_read_uint8(f, &num)) {
+        return false;
+    }
+    uint8_t delay_on, delay_off;
+    if (!file_read_uint8(f, &delay_on)) {
+        return false;
+    }
+    if (!file_read_uint8(f, &delay_off)) {
+        return false;
+    }
+    return true;
+}
+
 void project_open(void)
 {
     FILE *f = fopen(PROJECT_FILENAME, "rb");
@@ -116,7 +133,7 @@ void project_open(void)
     if (!file_read_uint8(f, &version)) {
         goto ret;
     }
-    if (version != 3) {
+    if (version != 4) {
         goto ret;
     }
     uint8_t section;
@@ -148,12 +165,20 @@ void project_open(void)
             if (!project_load_function_key(f)) {
                 goto ret;
             }
+        } else if (section == SECTION_PHYSICAL_OUTPUT) {
+            if (!project_load_physical_output(f)) {
+                goto ret;
+            }
         } else {
             goto ret;
         }
     }
+    fclose(f);
     wave_init(PROJECT_FILENAME);
+    logger_printf("Successfully loaded the project");
+    return;
 ret:
+    logger_printf("Can't load the project");
     fclose(f);
 }
 

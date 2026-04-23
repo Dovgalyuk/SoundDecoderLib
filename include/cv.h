@@ -17,6 +17,8 @@
 #define CV_REVERSE_VSTART       50
 #define CV_BRAKE_ON_THRESHOLD   51
 #define CV_BRAKE_OFF_THRESHOLD  52
+#define CV_LOAD_OPTIONAL        53
+#define CV_LOAD_PRIMARY         54
 // #define CV_SWITCH               49
 // #define CV_SOUND_VOLUME         63
 
@@ -50,6 +52,10 @@
 #define CV_SPEED_TABLE28        94
 
 /* Custom 112-256 */
+#define CV_FUNC_DEFAULT0        112
+#define CV_FUNC_DEFAULT1        113
+#define CV_FUNC_DEFAULT2        114
+#define CV_FUNC_DEFAULT3        115
 
 #define CV_MAX                  255
 

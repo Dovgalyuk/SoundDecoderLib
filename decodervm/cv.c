@@ -20,6 +20,8 @@ static const CVDesc cv_desc[CV_MAX + 1] = {
     [CV_REVERSE_VSTART] = {20, "Reverse start motor voltage", "Start motor voltage for reverse movement 255=VCC", 0, 255},
     [CV_BRAKE_ON_THRESHOLD] = {60, "Brake On", "Brake sound swithes on when the speed is smaller or equals than this value", 0, 255},
     [CV_BRAKE_OFF_THRESHOLD] = {7, "Brake Off", "Brake sound swithes off when the speed is smaller than this value", 0, 255},
+    [CV_LOAD_OPTIONAL] = {0, "Optional load", "Divided by 128 is the factor that changes acceleration and deceleration", 0, 255},
+    [CV_LOAD_PRIMARY] = {255, "Primary load", "Divided by 128 is the factor that changes acceleration and deceleration", 0, 255},
     [CV_SPEED_TABLE1] = {1, "Speed table step 1", "1-255", 1, 255},
     [CV_SPEED_TABLE2] = {2, "Speed table step 2", "1-255", 1, 255},
     [CV_SPEED_TABLE3] = {4, "Speed table step 3", "1-255", 1, 255},
@@ -48,6 +50,10 @@ static const CVDesc cv_desc[CV_MAX + 1] = {
     [CV_SPEED_TABLE26] = {213, "Speed table step 26", "1-255", 1, 255},
     [CV_SPEED_TABLE27] = {233, "Speed table step 27", "1-255", 1, 255},
     [CV_SPEED_TABLE28] = {255, "Speed table step 28", "1-255", 1, 255},
+    [CV_FUNC_DEFAULT0] = {0, "Functions 0-7", "Enabled by default F0=1 F1=2 F2=4 F3=8 F4=16 F5=32 F6=64 F7=128", 0, 255},
+    [CV_FUNC_DEFAULT1] = {0, "Functions 8-15", "Enabled by default F8=1 F9=2 F10=4 F11=8 F12=16 F13=32 F14=64 F15=128", 0, 255},
+    [CV_FUNC_DEFAULT2] = {0, "Functions 16-23", "Enabled by default F16=1 F17=2 F18=4 F19=8 F20=16 F21=32 F22=64 F23=128", 0, 255},
+    [CV_FUNC_DEFAULT3] = {0, "Functions 24-31", "Enabled by default F24=1 F25=2 F26=4 F27=8 F28=16 F29=32 F30=64 F31=128", 0, 255},
 };
 
 /*

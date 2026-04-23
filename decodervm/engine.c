@@ -68,6 +68,16 @@ void engine_set_output(uint8_t id, bool val)
     }
 }
 
+static uint16_t engine_check_load(uint16_t cv)
+{
+    if (vm_get_var(F_LOAD2) && cv_read(CV_LOAD_PRIMARY)) {
+        cv = (cv * cv_read(CV_LOAD_PRIMARY)) / 128;
+    } else if (vm_get_var(F_LOAD1) && cv_read(CV_LOAD_OPTIONAL)) {
+        cv = (cv * cv_read(CV_LOAD_OPTIONAL)) / 128;
+    }
+    return cv;
+}
+
 void engine_tick(uint32_t t)
 {
     /* Update immediate variables */
@@ -100,7 +110,8 @@ void engine_tick(uint32_t t)
         static int accel_tick;
         ++accel_tick;
         if (throttle_step < speed_step) {
-            uint8_t cv = cv_read(CV_DECELERATION);
+            uint16_t cv = cv_read(CV_DECELERATION);
+            cv = engine_check_load(cv);
             int16_t prev = cv_read(CV_SPEED_TABLE1 + speed_step - 1);
             int16_t next = speed_step > 1
                 ? cv_read(CV_SPEED_TABLE1 + speed_step - 2)
@@ -111,7 +122,8 @@ void engine_tick(uint32_t t)
                 accel_tick = 0;
             }
         } else {
-            uint8_t cv = cv_read(CV_ACCELERATION);
+            uint16_t cv = cv_read(CV_ACCELERATION);
+            cv = engine_check_load(cv);
             int16_t prev = speed_step
                 ? cv_read(CV_SPEED_TABLE1 + speed_step - 1)
                 : 0;

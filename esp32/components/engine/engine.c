@@ -77,7 +77,7 @@ static void engine_task(void *args)
             if (cur != pwm_pin_states[i]) {
                 pwm_pin_states[i] = cur;
                 ledc_set_fade_with_time(OUT_SPEED_MODE, pwm_pin_channels[i],
-                                        OUT_PWM_MAX, 3000/*time*/);
+                                        cur > 0 ? OUT_PWM_MAX : 0, 3000/*time*/);
                 ledc_fade_start(OUT_SPEED_MODE, pwm_pin_channels[i],
                                 LEDC_FADE_NO_WAIT);
             }
@@ -139,7 +139,7 @@ void engine_init(void)
             .timer_sel      = OUT_TIMER,
             .intr_type      = LEDC_INTR_DISABLE,
             .gpio_num       = pwm_pins[i],
-            .duty           = OUT_PWM_MAX,
+            .duty           = 0,
             .hpoint         = 0
         };
         ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
@@ -164,6 +164,8 @@ void engine_init(void)
         .pull_up_en = 0,
     };
     gpio_config(&io_conf_outputs);
+
+    ledc_fade_func_install(0);
 
     /* Main task for controlling speed */
     xTaskCreatePinnedToCore(engine_task, "engine_task", 2560, NULL, 5, NULL, 0);

@@ -40,6 +40,9 @@
 #define V_SHARE1        0x4f
 #define V_SHARE2        0x50
 #define F_DRIVING       0x51
+#define F_DISABLE_BRAKE 0x52
+#define F_LOAD1         0x53
+#define F_LOAD2         0x54
 
 #define F_KEY0          0x60
 #define F_KEY1          0x61

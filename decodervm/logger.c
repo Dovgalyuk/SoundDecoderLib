@@ -5,7 +5,7 @@
 #include <string.h>
 #include "logger.h"
 
-#define QUEUE_MAX   32
+#define QUEUE_MAX   64
 #define MESSAGE_LEN 127
 
 typedef struct LogRecord {
