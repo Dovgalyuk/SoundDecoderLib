@@ -75,9 +75,12 @@ static void engine_task(void *args)
         for (int i = 0 ; i < OUT_PWM_PINS ; ++i) {
             bool cur = engine_get_output(pwm_outputs[i]);
             if (cur != pwm_pin_states[i]) {
+                const OutputProps *p = engine_get_output_props(pwm_outputs[i]);
+                uint32_t delay = cur ? p->delay_on : p->delay_off;
+                delay *= 1000;
                 pwm_pin_states[i] = cur;
                 ledc_set_fade_with_time(OUT_SPEED_MODE, pwm_pin_channels[i],
-                                        cur > 0 ? OUT_PWM_MAX : 0, 3000/*time*/);
+                                        cur > 0 ? OUT_PWM_MAX : 0, delay);
                 ledc_fade_start(OUT_SPEED_MODE, pwm_pin_channels[i],
                                 LEDC_FADE_NO_WAIT);
             }

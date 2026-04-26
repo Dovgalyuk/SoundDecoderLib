@@ -100,22 +100,6 @@ static bool project_load_function_key(FILE *f)
     return true;
 }
 
-static bool project_load_physical_output(FILE *f)
-{
-    uint8_t num;
-    if (!file_read_uint8(f, &num)) {
-        return false;
-    }
-    uint8_t delay_on, delay_off;
-    if (!file_read_uint8(f, &delay_on)) {
-        return false;
-    }
-    if (!file_read_uint8(f, &delay_off)) {
-        return false;
-    }
-    return true;
-}
-
 void project_open(void)
 {
     FILE *f = fopen(PROJECT_FILENAME, "rb");
@@ -166,7 +150,7 @@ void project_open(void)
                 goto ret;
             }
         } else if (section == SECTION_PHYSICAL_OUTPUT) {
-            if (!project_load_physical_output(f)) {
+            if (!engine_load_output_props(f)) {
                 goto ret;
             }
         } else {
