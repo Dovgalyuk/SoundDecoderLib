@@ -6,10 +6,6 @@
 #include "vm.h"
 
 #define ENGINE_THROTTLE_STEPS 28
-#define ENGINE_OUTPUTS        7
-
-#define ENGINE_OUTPUT_FWD_LIGHT  2
-#define ENGINE_OUTPUT_BACK_LIGHT 3
 
 typedef struct OutputProps {
     uint8_t delay_on;
@@ -27,8 +23,6 @@ void engine_set_direction(bool d);
 void engine_stop(void);
 void engine_brake(void);
 
-bool engine_get_output(uint8_t id);
-void engine_set_output(uint8_t id, bool val);
 const OutputProps *engine_get_output_props(uint8_t id);
 bool engine_load_output_props(FILE *f);
 

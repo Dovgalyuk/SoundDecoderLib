@@ -197,7 +197,7 @@ void project_tick(uint32_t t)
         }
     }
     /* Reset all outputs */
-    bool out[ENGINE_OUTPUTS + 1] = {};
+    bool out[PHYS_OUTPUTS] = {};
     /* Validate conditions */
     for (uint8_t f = 0 ; f < function_count ; ++f) {
         /* Check inputs */
@@ -222,13 +222,13 @@ void project_tick(uint32_t t)
             }
             for (int i = 0 ; i < FUNCTION_MAX_OUT ; ++i) {
                 if (functions[f].physical[i]) {
-                    out[functions[f].physical[i]] = true;
+                    out[functions[f].physical[i] - 1] = true;
                 }
             }
         }
     }
-    for (int i = 1 ; i <= ENGINE_OUTPUTS ; ++i) {
-        engine_set_output(i, out[i]);
+    for (int i = 0 ; i < PHYS_OUTPUTS ; ++i) {
+        vm_set_var(PHYS_OUTPUT0 + i, out[i]);
     }
 }
 

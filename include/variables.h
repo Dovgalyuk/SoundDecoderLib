@@ -77,6 +77,16 @@
 #define F_KEY30         0x7e
 #define F_KEY31         0x7f
 
+/* Reserved addresses 0x80-0xa0 for 0x20 outputs */
+#define PHYS_OUTPUTS       7
+#define PHYS_OUTPUT0    0x80
+#define PHYS_OUTPUT1    0x81
+#define PHYS_OUTPUT2    0x82
+#define PHYS_OUTPUT3    0x83
+#define PHYS_OUTPUT4    0x84
+#define PHYS_OUTPUT5    0x85
+#define PHYS_OUTPUT6    0x86
+
 #define VAR_GLOBAL_SIGNED_START 0xE0
 /* Signed global variables */
 #define V_ACCEL         0xE0
