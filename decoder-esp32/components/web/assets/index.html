@@ -270,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCVDefs();
     document.getElementById('upload-project-form').addEventListener('submit', handleProjectUpload);
     document.getElementById('upload-firmware-form').addEventListener('submit', handleFirmwareUpload);
+    setStatusInterval(1000);
 });
 
 function setStatusInterval(v)
@@ -324,37 +325,43 @@ async function loadCVDefs() {
 }
 
 function pollStatus() {
-    fetch('/api/status')
-        .then(r => r.json())
-        .then(data => {
-            const indicator = document.getElementById('connection-status');
-            indicator.classList.remove('disconnected');
-            indicator.classList.add('connected');
+    if (currentTab === 'logs') {
+        pollLogs();
+    } else if (currentTab === 'system') {
+        fetchSysinfo();
+    } else if (currentTab === 'dashboard') {
+        fetch('/api/status')
+            .then(r => r.json())
+            .then(data => {
+                const indicator = document.getElementById('connection-status');
+                indicator.classList.remove('disconnected');
+                indicator.classList.add('connected');
 
-            const speed = parseInt(data.speed);
-            document.getElementById('speed-slider').value = speed;
+                const speed = parseInt(data.speed);
+                document.getElementById('speed-slider').value = speed;
 
-            const isFwd = (data.direction === "forward");
-            const dirBtn = document.getElementById('dir-btn');
-            dirBtn.innerText = isFwd ? "FWD" : "REV";
-            dirBtn.disabled = speed != 0;
+                const isFwd = (data.direction === "forward");
+                const dirBtn = document.getElementById('dir-btn');
+                dirBtn.innerText = isFwd ? "FWD" : "REV";
+                dirBtn.disabled = speed != 0;
 
-            const isMuted = (data.sound === "off");
-            const muteBtn = document.getElementById('mute-btn');
-            muteBtn.innerText = isMuted ? "Unmute" : "Mute";
+                const isMuted = (data.sound === "off");
+                const muteBtn = document.getElementById('mute-btn');
+                muteBtn.innerText = isMuted ? "Unmute" : "Mute";
 
-            // Sync Functions
-            if (data.functions) {
-                data.functions.forEach((state, idx) => {
-                    updateFuncBtn(idx, state);
-                });
-            }
-        })
-        .catch(e => {
-            const indicator = document.getElementById('connection-status');
-            indicator.classList.remove('connected');
-            indicator.classList.add('disconnected');
-        });
+                // Sync Functions
+                if (data.functions) {
+                    data.functions.forEach((state, idx) => {
+                        updateFuncBtn(idx, state);
+                    });
+                }
+            })
+            .catch(e => {
+                const indicator = document.getElementById('connection-status');
+                indicator.classList.remove('connected');
+                indicator.classList.add('disconnected');
+            });
+    }
 }
 
 function sendAction(action, value, index, cb=null) {
@@ -439,24 +446,10 @@ function showTab(tabId) {
 
     // Specific logic per tab
     if (tabId === 'logs') {
-        if (!logInterval) {
-            pollLogs(); // Immediate fetch
-            logInterval = setInterval(pollLogs, 1000);
-        }
+        pollLogs();
     } else if (tabId === 'system') {
         fetchSysinfo();
     } else if (tabId === 'dashboard') {
-        setStatusInterval(1000);
-    }
-
-    if (tabId !== 'logs') {
-        if (logInterval) {
-            clearInterval(logInterval);
-            logInterval = null;
-        }
-    }
-    if (tabId !== 'dashboard') {
-        setStatusInterval(0);
     }
 
     if (tabId === 'cvs') renderCVTable();
@@ -527,9 +520,11 @@ function fetchSysinfo() {
             }
             status.innerText = name;
             status.disabled = !state;
+
+            const viewer = document.getElementById('system-info');
+            viewer.innerText = data.info;
         })
         .catch(e => {
-            pollStatus();
         });
 }
 

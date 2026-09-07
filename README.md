@@ -56,6 +56,12 @@ Controller includes the following hardware components:
 * 7 programmable outputs
 * BEMF for adjusting the motor speed (work in progress)
 
+# Roadmap
+
+* BEMF with new motor driver
+* Support of logical input/outputs
+* H0-compatible PCB
+
 # Links
 
 * Radio-controlled engines with sound

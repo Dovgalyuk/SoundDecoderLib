@@ -5101,6 +5101,10 @@
 		(uuid "ff5bc478-b567-4370-b828-239011541c9e")
 	)
 	(no_connect
+		(at 165.1 34.29)
+		(uuid "03a0d508-fe4a-4fc7-9731-5a5eddcebaa9")
+	)
+	(no_connect
 		(at 168.91 139.7)
 		(uuid "072b8d83-fc49-4129-9de2-2898e8a9a224")
 	)
@@ -5129,6 +5133,10 @@
 		(uuid "3e0c75e1-5c7c-467f-8b64-8f1ca239a3fc")
 	)
 	(no_connect
+		(at 168.91 109.22)
+		(uuid "4f4ec7e1-75fc-421f-9116-c88bd38f0721")
+	)
+	(no_connect
 		(at 168.91 124.46)
 		(uuid "7015429a-91f7-4435-b953-e354ff0c6a69")
 	)
@@ -5145,8 +5153,16 @@
 		(uuid "b1af85fc-1f5e-4870-b96d-e71087914578")
 	)
 	(no_connect
+		(at 168.91 104.14)
+		(uuid "ca25159d-b4ee-45ee-b103-c0410a2065cd")
+	)
+	(no_connect
 		(at 168.91 160.02)
 		(uuid "d92c5ef5-ae4c-4cb1-84d3-f3572bc2aa06")
+	)
+	(no_connect
+		(at 165.1 31.75)
+		(uuid "e6c62159-466d-49b8-a51e-091f2480ae95")
 	)
 	(no_connect
 		(at 168.91 119.38)
@@ -5788,16 +5804,6 @@
 	)
 	(wire
 		(pts
-			(xy 148.59 34.29) (xy 165.1 34.29)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "56fe4c66-9497-41c1-aa64-4566eadb5e9b")
-	)
-	(wire
-		(pts
 			(xy 165.1 60.96) (xy 165.1 58.42)
 		)
 		(stroke
@@ -5815,16 +5821,6 @@
 			(type default)
 		)
 		(uuid "5846a584-c0b7-4361-9d06-14009558e92b")
-	)
-	(wire
-		(pts
-			(xy 148.59 31.75) (xy 165.1 31.75)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "58919549-1a73-494f-b672-987e50122654")
 	)
 	(wire
 		(pts
@@ -6956,16 +6952,6 @@
 		)
 		(uuid "0492c864-1faf-4182-9280-492f5caa9c2d")
 	)
-	(label "MOTOR_IN1"
-		(at 151.13 31.75 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "12b4d12e-2b40-4213-8bf2-316bc220dfe8")
-	)
 	(label "UART-TX{slash}GPIO A"
 		(at 157.48 167.64 0)
 		(effects
@@ -7125,16 +7111,6 @@
 			(justify left bottom)
 		)
 		(uuid "66db856b-8fbf-4beb-b210-51c94f5ac1c1")
-	)
-	(label "MOTOR_IN2"
-		(at 151.13 34.29 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "6ac7f3ca-16e1-4b76-98f1-0d06c78e8f7e")
 	)
 	(label "DCC"
 		(at 157.48 111.76 0)
@@ -7366,16 +7342,6 @@
 		)
 		(uuid "c997b220-1c09-4d51-a78d-facfc930c689")
 	)
-	(label "MOTOR_IN2"
-		(at 157.48 109.22 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "d1869029-f899-4708-ac98-27fc859e47f0")
-	)
 	(label "SDA"
 		(at 199.39 40.64 0)
 		(effects
@@ -7395,16 +7361,6 @@
 			(justify left bottom)
 		)
 		(uuid "d40a7a24-9ec7-4443-a48a-81cac8167df6")
-	)
-	(label "MOTOR_IN1"
-		(at 157.48 104.14 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "d4c6b323-6210-431c-894e-43323dae2c9c")
 	)
 	(label "BackLED"
 		(at 78.74 171.45 0)

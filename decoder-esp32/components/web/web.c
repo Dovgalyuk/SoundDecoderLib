@@ -180,6 +180,10 @@ static esp_err_t web_sysinfo_handler(httpd_req_t *req)
     }
     cJSON_AddStringToObject(root, "ota_state", ota_state_name);
 
+    char *sysinfo = engine_get_status();
+    cJSON_AddStringToObject(root, "info", sysinfo);
+    free(sysinfo);
+
     bool ok = cJSON_PrintPreallocated(root, scratch, SCRATCH_BUFSIZE - 10, false);
     cJSON_Delete(root);
     if (!ok) {

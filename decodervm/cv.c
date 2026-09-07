@@ -24,10 +24,14 @@ Kick start is usually used in conjunction with user-loadable Speed Table. It is 
 */
 
 static const CVDesc cv_desc[CV_MAX + 1] = {
-    [CV_VSTART] = {20, "Start motor voltage", "Start motor voltage for forward movement 255=VCC", 0, 255},
+#if CONFIG_BOARD_VERSION <= 2
+    [CV_VSTART] = {20, "Start motor voltage", "Start motor voltage for movement 255=VCC", 0, 255},
+#else
+    [CV_VSTART] = {10, "Start motor speed", "Start motor speed for movement in relative units", 0, 255},
+#endif
     [CV_ACCELERATION] = {10, "Acceleration", "0 for acceleration without delay", 0, 255},
     [CV_DECELERATION] = {10, "Deceleration", "0 for slowing down without delay", 0, 255},
-    [CV_EMF_CUTOUT] = {5, "EMF Cutout", "Speed step above which the back EMF motor control cuts off", 1, 28},
+    //[CV_EMF_CUTOUT] = {5, "EMF Cutout", "Speed step above which the back EMF motor control cuts off", 1, 28},
     [CV_CHUFF_PERIOD] = {120, "Chuff period", "Steam chuffs period at speed 1 in 10s of milliseconds", 30, 255},
     [CV_CHUFF_SPEEDUP] = {96, "Chuff speedup", "Chuff speedup factor", 0, 255},
     [CV_CHUFF_MIN_PERIOD] = {150, "Minimum chuff period", "Chuff period could not be less at highest speeds", 0, 255},
@@ -36,8 +40,16 @@ static const CVDesc cv_desc[CV_MAX + 1] = {
     [CV_LOAD_OPTIONAL] = {0, "Optional load", "Divided by 128 is the factor that changes acceleration and deceleration", 0, 255},
     [CV_LOAD_PRIMARY] = {255, "Primary load", "Divided by 128 is the factor that changes acceleration and deceleration", 0, 255},
     [CV_SWITCHING_TRIM] = {64, "Switching trim", "Divided by 128 is the factor that changes the speed in switching mode", 0, 255},
+#if CONFIG_BOARD_VERSION <= 2
     [CV_KICK_START_TIME] = {3, "Kick start time", "Time for kick start voltage in 10ms.", 0, 255},
+#else
+    [CV_KMC] = {100, "KMC", "Motor KMC.", 0, 255},
+    [CV_KMC_SCALE] = {3, "KMC Scale", "Motor KMC scale.", 0, 3},
+    [CV_W_SCALE] = {0, "W Scale", "Scaling factor that helps in setting the target motor current ripple speed. 0: 16, 1: 32, 2: 64, 3: 128", 0, 3},
+#endif
+#if CONFIG_BOARD_VERSION <= 2
     [CV_KICK_START] = {90, "Kick start", "Extra Kick that will supplied to the motor when starting.", 0, 255},
+#endif
     [CV_SPEED_TABLE1] = {1, "Speed table step 1", "1-255", 1, 255},
     [CV_SPEED_TABLE2] = {2, "Speed table step 2", "1-255", 1, 255},
     [CV_SPEED_TABLE3] = {4, "Speed table step 3", "1-255", 1, 255},

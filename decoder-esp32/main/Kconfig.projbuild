@@ -11,7 +11,8 @@ menu "Main board configuration"
         default 1 if ESPTOOLPY_FLASHSIZE_4MB
         default 1 if ESPTOOLPY_FLASHSIZE_16MB
         default 2 if ESPTOOLPY_FLASHSIZE_32MB
-        range 1 2
+        range 1 3
         help
             Version of the board with ESP32 WROOM
+            3 - version with DRV8235
 endmenu

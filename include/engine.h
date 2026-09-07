@@ -31,4 +31,6 @@ bool engine_can_accelerate(void);
 const OutputProps *engine_get_output_props(uint8_t id);
 bool engine_load_output_props(FILE *f);
 
+char *engine_get_status(void);
+
 #endif
