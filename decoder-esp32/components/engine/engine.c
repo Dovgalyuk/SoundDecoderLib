@@ -53,9 +53,7 @@ static bool engine_should_stop;
 static EngineState engine_state;
 static uint8_t prev_speed;
 
-#if CONFIG_BOARD_VERSION<=2
-static uint32_t motor_voltage_start, motor_voltage_cur;
-static uint8_t motor_voltage_count;
+#if CONFIG_BOARD_VERSION <= 2
 static int accel_time;
 #endif
 
